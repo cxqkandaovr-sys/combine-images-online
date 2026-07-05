@@ -1,0 +1,3289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Combine Images Online - Merge Photos Into One Image</title>
+  <meta name="description" content="Combine two images or multiple photos into one picture online. Create side-by-side layouts, automatic grids, and styled collages with adjustable spacing and backgrounds.">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #f4f5f7;
+      --surface: #ffffff;
+      --text: #1a1d21;
+      --text-muted: #5c6370;
+      --border: #e2e5ea;
+      --accent: #2d9f6f;
+      --accent-hover: #248a5e;
+      --accent-light: #e8f5ef;
+      --danger: #d64545;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 1px 3px rgba(0,0,0,.06), 0 4px 16px rgba(0,0,0,.04);
+      --shadow-lg: 0 4px 24px rgba(0,0,0,.08);
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    button { font-family: inherit; cursor: pointer; border: none; background: none; }
+    input[type="range"] {
+      width: 100%; accent-color: var(--accent);
+      height: 8px; padding: 10px 0; cursor: pointer;
+    }
+    input[type="color"] { position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; }
+
+    /* Header */
+    .header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(255,255,255,.92);
+      backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+    }
+    .header-inner {
+      max-width: 1280px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 15px; color: var(--text); text-decoration: none; }
+    .logo:hover { text-decoration: none; }
+    .logo-icon {
+      width: 32px; height: 32px; background: var(--accent-light);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center;
+    }
+    .logo-icon svg { width: 18px; height: 18px; color: var(--accent); }
+    .nav-links { display: flex; gap: 24px; }
+    .nav-links a { color: var(--text-muted); font-size: 14px; font-weight: 500; text-decoration: none; }
+    .nav-links a:hover { color: var(--accent); text-decoration: none; }
+
+    /* Hero */
+    .hero { max-width: 1280px; margin: 0 auto; padding: 40px 24px 28px; text-align: center; }
+    .hero h1 {
+      font-size: clamp(32px, 4vw, 48px); font-weight: 800;
+      letter-spacing: -.025em; margin-bottom: 12px; line-height: 1.15;
+    }
+    .hero-sub {
+      font-size: 18px; color: var(--text-muted);
+      max-width: 640px; margin: 0 auto; line-height: 1.55;
+    }
+
+    /* Editor */
+    .editor-wrap { max-width: 1280px; margin: 0 auto; padding: 0 24px 32px; scroll-margin-top: 80px; }
+    .editor-card {
+      background: var(--surface); border-radius: 16px;
+      box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+      overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+    .editor-grid {
+      display: grid;
+      grid-template-columns: 280px 1fr 300px;
+      flex: 1; min-height: 0; overflow: hidden;
+    }
+    .panel {
+      padding: 20px; border-right: 1px solid var(--border);
+      overflow-y: auto; min-height: 0;
+      overscroll-behavior: contain;
+    }
+    .panel:last-child { border-right: none; border-left: 1px solid var(--border); }
+    .panel-center {
+      padding: 24px; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      background: #fafbfc; min-height: 0; overflow: hidden;
+    }
+    .panel-title { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 12px; flex-shrink: 0; }
+    .section-label { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); margin-bottom: 10px; }
+    .panel-left { display: flex; flex-direction: column; }
+    .panel-left.is-empty { overflow: hidden; }
+
+    /* Upload */
+    .upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius);
+      padding: 32px 20px; text-align: center; cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .panel-left.is-empty .upload-zone {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      min-height: 480px; margin-top: 0;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent); background: var(--accent-light);
+    }
+    .upload-zone.dragover {
+      border-color: var(--accent);
+      background: #e8f5ef;
+      box-shadow: inset 0 0 0 1px rgba(45, 159, 111, 0.12);
+    }
+    .upload-zone-content { display: flex; flex-direction: column; align-items: center; }
+    .upload-zone h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+    .upload-zone p { font-size: 14px; color: var(--text-muted); line-height: 1.45; }
+    .upload-zone svg { width: 40px; height: 40px; color: var(--accent); margin-bottom: 10px; }
+    .upload-zone.hidden { display: none; }
+    .btn-add {
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+      width: 100%; padding: 12px; border: 1px dashed var(--border);
+      border-radius: var(--radius-sm); font-size: 14px; font-weight: 600;
+      color: var(--accent); background: var(--accent-light);
+      transition: background .2s;
+    }
+    .btn-add:hover { background: #d4eddf; }
+    .btn-add.hidden { display: none; }
+    .images-block.hidden { display: none; }
+    .thumb-list {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .thumb-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 8px; border-radius: var(--radius-sm);
+      border: 2px solid transparent; cursor: pointer;
+      background: var(--bg); transition: border-color .15s, box-shadow .15s;
+      min-width: 0;
+    }
+    .thumb-item.selected { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+    .thumb-item.dragging { opacity: .5; }
+    .thumb-item.drag-over { border-color: var(--accent); border-style: dashed; }
+    .thumb-preview {
+      width: 46px; height: 46px; border-radius: 6px;
+      object-fit: cover; flex-shrink: 0;
+    }
+    .thumb-num { font-size: 12px; font-weight: 700; color: var(--text-muted); flex-shrink: 0; }
+    .thumb-drag { color: var(--text-muted); cursor: grab; padding: 3px; font-size: 13px; flex-shrink: 0; line-height: 1; }
+    .thumb-drag:active { cursor: grabbing; }
+    .thumb-remove {
+      margin-left: auto; padding: 3px 6px; font-size: 12px;
+      color: var(--danger); border-radius: 4px; flex-shrink: 0; line-height: 1;
+    }
+    .thumb-remove:hover { background: #fde8e8; }
+    .helper-text { font-size: 12px; color: var(--text-muted); margin-top: 8px; text-align: center; }
+
+    /* Layouts */
+    .layout-section { margin-top: 20px; padding-top: 18px; border-top: 1px solid var(--border); }
+    .layout-group-title { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .layout-smart-status {
+      font-size: 12px; color: var(--accent); font-weight: 500;
+      margin-bottom: 12px; line-height: 1.4;
+    }
+    .layout-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .layout-btn {
+      aspect-ratio: 1; border: 2px solid var(--border); border-radius: var(--radius-sm);
+      padding: 10px; cursor: pointer; background: var(--surface);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+      transition: border-color .15s, background .15s; min-height: 88px;
+    }
+    .layout-btn:hover { border-color: var(--accent); }
+    .layout-btn.active { border-color: var(--accent); background: var(--accent-light); }
+    .layout-btn .mini { width: 100%; height: 100%; display: grid; gap: 2px; }
+    .layout-btn .mini span { background: #c5cad3; border-radius: 1px; }
+    .layout-btn .mini.h2 { grid-template-columns: 1fr 1fr; }
+    .layout-btn .mini.v2 { grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.grid4 { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.l1s2 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.l1s2 span:first-child { grid-row: 1 / 3; }
+    .layout-btn .mini.f-top3 { grid-template-columns: 1fr 1fr; grid-template-rows: 2fr 1fr; }
+    .layout-btn .mini.f-top3 span:first-child { grid-column: 1 / 3; }
+    .layout-btn .mini.l1s3r { grid-template-columns: 1fr 2fr; grid-template-rows: 1fr 1fr 1fr; }
+    .layout-btn .mini.l1s3r span:nth-child(4) { grid-column: 2; grid-row: 1 / 4; }
+    .layout-btn .mini.f-top4 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 2fr 1fr; }
+    .layout-btn .mini.f-top4 span:first-child { grid-column: 1 / 4; }
+    .layout-btn .mini.f-split { grid-template-columns: 13fr 7fr; }
+    .layout-btn .mini.h4 { grid-template-rows: repeat(4, 1fr); }
+    .layout-btn .mini.bal5 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.bal5 span:nth-child(2) { grid-column: 2 / 4; }
+    .layout-btn .mini.l1g4 { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.l1g4 span:first-child { grid-row: 1 / 3; }
+    .layout-btn .mini.f-top5 { grid-template-columns: 1fr 1fr; grid-template-rows: 2fr 1fr 1fr; }
+    .layout-btn .mini.f-top5 span:first-child { grid-column: 1 / 3; }
+    .layout-btn .mini.f-top6 { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 2fr 1fr 1fr; }
+    .layout-btn .mini.f-top6 span:first-child { grid-column: 1 / 4; }
+    .layout-btn .mini.l1s6 { grid-template-columns: 2fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+    .layout-btn .mini.l1s6 span:first-child { grid-row: 1 / 4; }
+    .layout-btn .mini.l1s6 span:nth-child(6) { grid-column: 2 / 4; }
+    .layout-btn .mini.v3 { grid-template-columns: 1fr 1fr 1fr; }
+    .layout-btn .mini.h3 { grid-template-rows: 1fr 1fr 1fr; }
+    .layout-btn .mini.l1s3 { grid-template-columns: 2fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+    .layout-btn .mini.l1s3 span:first-child { grid-row: 1 / 4; }
+    .layout-btn .mini.v4 { grid-template-columns: repeat(4, 1fr); }
+    .layout-btn .mini.grid32 { grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; }
+    .layout-btn .mini.grid33 { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); }
+    .layout-label { font-size: 11px; color: var(--text-muted); font-weight: 600; text-align: center; line-height: 1.25; }
+
+    /* Canvas */
+    .canvas-container {
+      position: relative; width: 100%; max-width: 100%;
+      display: flex; align-items: center; justify-content: center;
+      flex: 1; min-height: 420px;
+    }
+    .canvas-container.is-empty {
+      cursor: pointer; border-radius: var(--radius);
+      transition: background .2s, box-shadow .2s;
+    }
+    .canvas-container.is-empty:hover {
+      background: rgba(45, 159, 111, 0.03);
+    }
+    .canvas-container.is-empty.dragover {
+      background: var(--accent-light);
+      box-shadow: inset 0 0 0 2px var(--accent);
+    }
+    #previewCanvas {
+      max-width: 100%; max-height: 100%; height: auto; border-radius: var(--radius-sm);
+      box-shadow: var(--shadow); cursor: pointer;
+    }
+    .canvas-placeholder {
+      text-align: center; padding: 32px 24px; width: 100%; height: 100%;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; flex: 1;
+    }
+    .canvas-placeholder strong { font-size: 17px; font-weight: 700; color: var(--text); display: block; margin-bottom: 8px; }
+    .canvas-placeholder p { color: var(--text-muted); font-size: 15px; margin-top: 0; line-height: 1.55; max-width: 360px; }
+    .collage-preview-wrap {
+      position: relative; margin: 0 auto 22px;
+    }
+    .collage-preview {
+      display: grid;
+      grid-template-columns: 1.35fr 0.9fr 0.75fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 8px;
+      width: min(248px, 74%);
+      aspect-ratio: 5 / 4;
+      margin: 0 auto;
+      padding: 6px;
+      border-radius: 14px;
+      outline: 2px solid transparent;
+      outline-offset: 3px;
+      transition: transform .22s ease, box-shadow .22s ease, outline-color .22s ease;
+    }
+    .collage-block {
+      background: #dde1e8;
+      border-radius: 10px;
+      transition: background .22s ease;
+    }
+    .collage-block-a { grid-column: 1; grid-row: 1 / 3; }
+    .collage-block-b { grid-column: 2 / 4; grid-row: 1; }
+    .collage-block-c { grid-column: 2; grid-row: 2; }
+    .collage-block-d { grid-column: 3; grid-row: 2; }
+    .canvas-container.is-empty:hover .collage-preview,
+    .canvas-placeholder:hover .collage-preview {
+      transform: translateY(-3px);
+      outline-color: rgba(45, 159, 111, 0.45);
+      box-shadow: 0 8px 24px rgba(45, 159, 111, 0.12);
+    }
+    .canvas-container.is-empty:hover .collage-block,
+    .canvas-placeholder:hover .collage-block {
+      background: #d4d9e2;
+    }
+    .placeholder-tooltip {
+      display: block;
+      margin-top: 10px;
+      font-size: 12px; font-weight: 600; color: var(--accent);
+      text-align: center;
+      opacity: 0; transition: opacity .22s ease;
+      pointer-events: none;
+    }
+    .canvas-container.is-empty:hover .placeholder-tooltip,
+    .canvas-placeholder:hover .placeholder-tooltip {
+      opacity: 1;
+    }
+    .btn-canvas-upload {
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      margin-top: 18px; padding: 11px 22px; font-size: 14px; font-weight: 600;
+      background: var(--surface); color: var(--accent);
+      border: 2px solid var(--accent); border-radius: var(--radius-sm);
+      transition: background .15s, border-color .15s; box-shadow: none;
+      position: relative; z-index: 1;
+    }
+    .btn-canvas-upload:hover { background: var(--accent-light); border-color: var(--accent-hover); }
+    .btn-canvas-upload svg { width: 16px; height: 16px; }
+    .canvas-msg {
+      font-size: 14px; color: var(--text-muted); text-align: center;
+      margin-top: 14px; padding: 10px 18px; background: #fff3cd;
+      border-radius: var(--radius-sm); display: none;
+    }
+    .canvas-msg.show { display: block; }
+    .min-images-notice {
+      display: none; align-items: flex-start; gap: 8px;
+      margin-top: 12px; padding: 8px 10px;
+      background: #fef9e7; border: 1px solid #f5e6a8; border-radius: var(--radius-sm);
+      font-size: 12px; line-height: 1.45; color: #7a6520;
+    }
+    .min-images-notice.show { display: flex; }
+    .min-images-notice svg { width: 15px; height: 15px; flex-shrink: 0; margin-top: 1px; color: #c9a227; }
+
+    /* Settings */
+    .settings-group { margin-bottom: 22px; }
+    .settings-label {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 15px; font-weight: 600; margin-bottom: 10px;
+    }
+    .settings-value { font-weight: 500; color: var(--text-muted); font-size: 14px; }
+    .btn-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .btn-pill {
+      padding: 8px 16px; font-size: 14px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: 20px;
+      background: var(--surface); color: var(--text);
+      transition: all .15s;
+    }
+    .btn-pill:hover { border-color: var(--accent); }
+    .btn-pill.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .color-presets { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .color-swatch {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--border);
+      cursor: pointer; transition: transform .15s, border-color .15s;
+    }
+    .color-swatch:not(.color-swatch-custom):hover {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-light);
+      transform: scale(1.05);
+    }
+    .color-swatch.active:not(.color-swatch-custom) { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-light); }
+    .color-swatch.transparent-bg {
+      background: repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 10px 10px;
+    }
+    .color-swatch-custom {
+      width: auto; height: 32px; border-radius: 16px; padding: 0 12px;
+      font-size: 12px; font-weight: 600; color: var(--text-muted);
+      background: var(--surface); border: 1px solid var(--border);
+      cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+      flex-shrink: 0;
+    }
+    .color-swatch-custom:hover { border-color: var(--accent); color: var(--accent); }
+    .color-swatch-custom.active {
+      border-color: var(--accent); background: var(--accent-light);
+      color: var(--accent); box-shadow: none;
+    }
+    .color-custom-panel {
+      display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;
+    }
+    .color-custom-panel.hidden { display: none; }
+    .color-current-swatch {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      cursor: pointer; padding: 0; flex-shrink: 0;
+      transition: border-color .15s;
+    }
+    .color-current-swatch:hover { border-color: var(--accent); }
+    .color-picker-native {
+      position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none;
+      overflow: hidden; clip: rect(0,0,0,0);
+    }
+    .color-custom-panel .hex-input {
+      flex: 1; min-width: 72px; max-width: 108px; height: 32px;
+      padding: 6px 10px; border: 1px solid var(--border);
+      border-radius: 8px; font-size: 12px; font-family: ui-monospace, monospace;
+      text-transform: uppercase; background: var(--surface);
+    }
+    .color-custom-panel .hex-input:focus {
+      outline: none; border-color: var(--accent);
+      box-shadow: 0 0 0 2px var(--accent-light);
+    }
+    .btn-eyedropper {
+      display: inline-flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border: 1px solid var(--border); border-radius: 10px;
+      background: var(--surface); flex-shrink: 0;
+      transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
+    }
+    .btn-eyedropper:hover:not(:disabled) {
+      border-color: var(--accent); background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    .btn-eyedropper.is-active {
+      border-color: var(--accent); background: var(--accent-light);
+    }
+    .btn-eyedropper:focus-visible {
+      outline: none; box-shadow: 0 0 0 2px var(--accent-light), 0 0 0 3px var(--accent);
+    }
+    .btn-eyedropper.hidden { display: none; }
+    .eyedropper-icon {
+      position: relative; width: 28px; height: 28px; display: block;
+    }
+    .eyedropper-wheel {
+      position: absolute; inset: 1px; border-radius: 50%;
+      background: conic-gradient(
+        #e53935, #fb8c00, #fdd835, #43a047, #00acc1, #1e88e5, #8e24aa, #e53935
+      );
+      -webkit-mask: radial-gradient(circle, transparent 46%, #000 48%);
+      mask: radial-gradient(circle, transparent 46%, #000 48%);
+    }
+    .eyedropper-pipette {
+      position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none;
+    }
+    .color-field-label {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      margin-bottom: 8px;
+    }
+    .color-field-label + .color-presets { margin-bottom: 0; }
+    .color-field-custom { margin-top: 14px; }
+    .color-field-custom.hidden { display: none; }
+    .color-field-custom .color-custom-panel { margin-top: 8px; }
+    /* Background section */
+    .bg-section { margin-bottom: 22px; }
+    .bg-section-heading {
+      font-size: 18px; font-weight: 700; color: var(--text);
+      margin-bottom: 11px; letter-spacing: -.01em;
+    }
+    .bg-segmented {
+      display: flex; padding: 3px; gap: 2px;
+      background: var(--bg); border: 1px solid var(--border);
+      border-radius: 10px; margin-bottom: 16px;
+    }
+    .bg-segmented .bg-tab {
+      flex: 1; padding: 9px 8px; font-size: 14px; font-weight: 600;
+      border-radius: 8px; text-align: center; border: 1px solid transparent;
+      background: transparent; color: var(--text-muted);
+      transition: background .18s, color .18s, border-color .18s, box-shadow .18s;
+      cursor: pointer;
+    }
+    .bg-segmented .bg-tab:hover:not(:disabled):not(.active) {
+      background: rgba(255,255,255,.7); color: var(--text);
+    }
+    .bg-segmented .bg-tab.active {
+      background: var(--accent-light); border-color: rgba(45,159,111,.25);
+      color: var(--accent); box-shadow: 0 1px 2px rgba(45,159,111,.08);
+    }
+    .bg-segmented .bg-tab:disabled { opacity: .4; cursor: not-allowed; }
+    .bg-tab-content { padding-top: 2px; }
+    .bg-tab-panel.hidden { display: none; }
+    .control-sublabel {
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px;
+    }
+    .control-sublabel .settings-value { font-size: 13px; }
+    .control-helper {
+      font-size: 12px; color: var(--text-muted); line-height: 1.45;
+      margin: -4px 0 10px;
+    }
+    .slider-hints {
+      display: flex; justify-content: space-between;
+      font-size: 11px; color: var(--text-muted); margin-top: 4px;
+    }
+    .texture-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    @media (max-width: 360px) { .texture-grid { grid-template-columns: repeat(2, 1fr); } }
+    .texture-card {
+      position: relative; display: flex; flex-direction: column; align-items: stretch;
+      padding: 0; border: 1.5px solid var(--border); border-radius: 10px;
+      background: var(--surface); cursor: pointer; overflow: hidden;
+      transition: border-color .18s, background .18s, transform .18s, box-shadow .18s;
+    }
+    .texture-card:hover {
+      border-color: rgba(45,159,111,.45); transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0,0,0,.04);
+    }
+    .texture-card.active {
+      border-color: var(--accent); background: var(--accent-light);
+      box-shadow: 0 0 0 1px rgba(45,159,111,.12);
+    }
+    .texture-card-check {
+      position: absolute; top: 5px; right: 5px; width: 16px; height: 16px;
+      border-radius: 50%; background: var(--accent); color: #fff;
+      display: none; align-items: center; justify-content: center;
+      font-size: 9px; font-weight: 700; line-height: 1; z-index: 1;
+    }
+    .texture-card.active .texture-card-check { display: flex; }
+    .texture-preview {
+      height: 44px; margin: 6px 6px 0; border-radius: 6px;
+      background: #f3f4f6; border: 1px solid rgba(0,0,0,.04);
+    }
+    .texture-preview-none { background: #f3f4f6; }
+    .texture-preview-soft-grid {
+      background-color: #f3f4f6;
+      background-image:
+        linear-gradient(rgba(0,0,0,.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,0,0,.07) 1px, transparent 1px);
+      background-size: 10px 10px;
+    }
+    .texture-preview-dots {
+      background-color: #f3f4f6;
+      background-image: radial-gradient(circle, rgba(0,0,0,.14) 1px, transparent 1px);
+      background-size: 8px 8px;
+    }
+    .texture-preview-diagonal {
+      background-color: #f3f4f6;
+      background-image: repeating-linear-gradient(
+        45deg, transparent, transparent 5px, rgba(0,0,0,.08) 5px, rgba(0,0,0,.08) 6px
+      );
+    }
+    .texture-preview-paper {
+      background-color: #f5f5f0;
+      background-image:
+        radial-gradient(circle at 20% 30%, rgba(0,0,0,.04) 1px, transparent 1px),
+        radial-gradient(circle at 70% 60%, rgba(0,0,0,.03) 1px, transparent 1px),
+        radial-gradient(circle at 40% 80%, rgba(0,0,0,.035) 1px, transparent 1px);
+      background-size: 12px 12px, 16px 16px, 10px 10px;
+    }
+    .texture-preview-checkerboard {
+      background-color: #eee;
+      background-image:
+        linear-gradient(45deg, #f8f8f8 25%, transparent 25%),
+        linear-gradient(-45deg, #f8f8f8 25%, transparent 25%),
+        linear-gradient(45deg, transparent 75%, #f8f8f8 75%),
+        linear-gradient(-45deg, transparent 75%, #f8f8f8 75%);
+      background-size: 10px 10px;
+      background-position: 0 0, 0 5px, 5px -5px, -5px 0;
+    }
+    .texture-card-label {
+      font-size: 11px; font-weight: 600; color: var(--text-muted);
+      text-align: center; padding: 6px 4px 8px; line-height: 1.25;
+    }
+    .texture-card.active .texture-card-label { color: var(--accent); }
+    .texture-intensity-block.hidden { display: none; }
+    .texture-intensity-block { margin-top: 18px; }
+    /* Background image upload */
+    .bg-upload-card {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px; padding: 22px 16px; border: 1.5px dashed var(--border);
+      border-radius: 12px; background: var(--surface); cursor: pointer;
+      text-align: center; transition: border-color .18s, background .18s, transform .18s;
+    }
+    .bg-upload-card:hover {
+      border-color: var(--accent); background: var(--accent-light);
+      transform: translateY(-1px);
+    }
+    .bg-upload-card svg { width: 28px; height: 28px; color: var(--accent); opacity: .85; }
+    .bg-upload-card strong { font-size: 14px; font-weight: 600; color: var(--text); }
+    .bg-upload-card span { font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .bg-upload-card.hidden { display: none; }
+    .bg-image-card.hidden { display: none; }
+    .bg-image-card { margin-top: 2px; }
+    .bg-image-preview-wrap {
+      position: relative; border-radius: 10px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--bg);
+    }
+    .bg-image-preview-wrap img {
+      display: block; width: 100%; height: 72px; object-fit: cover;
+    }
+    .bg-image-actions {
+      display: flex; gap: 8px; margin-top: 10px;
+    }
+    .bg-image-actions button { flex: 1; padding: 8px 10px; font-size: 13px; }
+    .bg-image-controls { margin-top: 18px; display: flex; flex-direction: column; gap: 16px; }
+    .fit-segmented {
+      display: flex; padding: 3px; gap: 2px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .fit-segmented .btn-pill {
+      flex: 1; padding: 7px 12px; font-size: 13px; border-radius: 6px;
+      border: 1px solid transparent; background: transparent;
+    }
+    .fit-segmented .btn-pill.active {
+      background: var(--accent-light); color: var(--accent);
+      border-color: rgba(45,159,111,.25); box-shadow: none;
+    }
+    .settings-tabs { display: flex; gap: 6px; margin-bottom: 20px; }
+    .settings-tab {
+      flex: 1; padding: 10px; font-size: 14px; font-weight: 600;
+      border-radius: var(--radius-sm); text-align: center;
+      border: 1px solid var(--border); background: var(--bg);
+    }
+    .settings-tab.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+    .settings-tab:disabled { opacity: .45; cursor: not-allowed; }
+    .more-ratios { margin-top: 8px; }
+    .more-ratios summary {
+      font-size: 13px; font-weight: 600; color: var(--accent); cursor: pointer;
+      list-style: none; padding: 4px 0;
+    }
+    .more-ratios summary::-webkit-details-marker { display: none; }
+    .more-ratios .btn-group { margin-top: 8px; }
+    .font-size-row { display: flex; align-items: center; gap: 10px; }
+    .font-size-row input[type="range"] { flex: 1; min-width: 0; }
+    .font-size-input {
+      width: 58px; padding: 8px 6px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 13px; text-align: center;
+    }
+    .font-size-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .font-size-presets { display: flex; gap: 6px; margin-top: 8px; }
+    .font-size-presets .btn-pill { padding: 5px 12px; font-size: 12px; }
+    #textFont option[value="modern"] { font-family: Arial, Helvetica, sans-serif; }
+    #textFont option[value="friendly"] { font-family: Trebuchet MS, Arial, sans-serif; }
+    #textFont option[value="classic"] { font-family: Georgia, serif; }
+    #textFont option[value="editorial"] { font-family: "Times New Roman", serif; }
+    #textFont option[value="mono"] { font-family: "Courier New", monospace; }
+    #textFont option[value="handwritten"] { font-family: "Bradley Hand", "Comic Sans MS", cursive; }
+    #textFont option[value="playful"] { font-family: "Marker Felt", "Comic Sans MS", cursive; }
+    #textFont option[value="elegant"] { font-family: "Snell Roundhand", "Apple Chancery", cursive; }
+    .hex-input {
+      width: 88px; padding: 8px 10px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 13px; font-family: ui-monospace, monospace;
+      text-transform: uppercase;
+    }
+    .hex-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .text-pos-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-width: 168px;
+    }
+    .text-pos-btn {
+      padding: 10px 6px; font-size: 11px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text-muted); cursor: pointer;
+      transition: all .15s;
+    }
+    .text-pos-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .text-pos-btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+    .select-input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 14px; background: var(--surface);
+    }
+    .select-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+    .btn-secondary {
+      padding: 10px 16px; font-size: 14px; font-weight: 600;
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      background: var(--surface); color: var(--text);
+    }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { color: var(--danger); border-color: #f5c6c6; }
+    .btn-danger:hover { background: #fde8e8; }
+    .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+    .text-section { border-top: 1px solid var(--border); padding-top: 16px; margin-top: 8px; }
+    .text-section summary {
+      font-size: 15px; font-weight: 700; cursor: pointer; list-style: none;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .text-section summary::-webkit-details-marker { display: none; }
+    .text-controls { margin-top: 12px; display: flex; flex-direction: column; gap: 14px; }
+    .text-input {
+      width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 14px;
+    }
+    .text-input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-light); }
+
+    /* Action bar */
+    .action-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 24px; border-top: 1px solid var(--border); background: var(--surface);
+      flex-shrink: 0; position: sticky; bottom: 0; z-index: 10;
+    }
+    .btn-reset {
+      padding: 12px 22px; font-size: 14px; font-weight: 600;
+      color: var(--text-muted); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--surface);
+    }
+    .btn-reset:hover { border-color: var(--text-muted); color: var(--text); }
+    .action-right { display: flex; gap: 12px; }
+    .btn-download {
+      padding: 12px 24px; font-size: 14px; font-weight: 700;
+      border-radius: var(--radius-sm); transition: all .15s;
+    }
+    .btn-download-png { background: var(--accent); color: #fff; }
+    .btn-download-png:hover:not(:disabled) { background: var(--accent-hover); }
+    .btn-download-jpg { background: var(--surface); color: var(--accent); border: 2px solid var(--accent); }
+    .btn-download-jpg:hover:not(:disabled) { background: var(--accent-light); }
+    .btn-download:disabled { opacity: .45; cursor: not-allowed; }
+
+    /* Privacy */
+    .privacy-line {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 20px 24px 12px; font-size: 14px; color: var(--text-muted);
+    }
+    .privacy-line svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+
+    /* Feature highlights */
+    .feature-highlights {
+      display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+      gap: 16px 40px; padding: 8px 24px 28px;
+      max-width: 1280px; margin: 0 auto;
+    }
+    .feature-item {
+      display: flex; align-items: center; gap: 10px;
+      font-size: 14px; color: var(--text-muted); font-weight: 500;
+    }
+    .feature-item svg { width: 18px; height: 18px; color: var(--accent); flex-shrink: 0; }
+
+    /* AI / Related Tools */
+    .related-tools {
+      max-width: 1280px; margin: 0 auto; padding: 0 24px 48px;
+    }
+    .related-tools-inner {
+      padding: 20px 22px; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--surface);
+      display: flex; flex-wrap: wrap; align-items: center;
+      justify-content: space-between; gap: 16px;
+    }
+    .related-tools-label {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-muted); margin-bottom: 4px;
+    }
+    .related-tools-text strong {
+      display: block; font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 4px;
+    }
+    .related-tools-text p {
+      font-size: 13px; color: var(--text-muted); line-height: 1.5; max-width: 520px; margin: 0;
+    }
+    .btn-coming-soon {
+      padding: 10px 20px; font-size: 13px; font-weight: 600;
+      background: var(--bg); color: var(--text-muted);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      cursor: pointer; white-space: nowrap; transition: all .18s;
+    }
+    .btn-coming-soon:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+
+    /* SEO Landing */
+    .seo-landing { max-width: 1280px; margin: 0 auto; padding: 0 24px 64px; }
+    .seo-section { padding: 56px 0; border-top: 1px solid var(--border); }
+    .seo-section:first-child { border-top: none; padding-top: 48px; }
+    .seo-eyebrow {
+      font-size: 11px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 12px;
+    }
+    .seo-h2 {
+      font-size: clamp(28px, 3.2vw, 40px); font-weight: 800;
+      letter-spacing: -.025em; line-height: 1.15; color: var(--text); margin-bottom: 16px;
+    }
+    .seo-lead {
+      font-size: 17px; line-height: 1.65; color: var(--text-muted); margin-bottom: 24px;
+      max-width: 520px;
+    }
+    .seo-section-head .seo-lead { margin-bottom: 0; max-width: none; }
+    .seo-section-head { text-align: center; max-width: 640px; margin: 0 auto 36px; }
+    .btn-seo-cta {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 14px 28px; font-size: 15px; font-weight: 700;
+      background: #1a1d21; color: #fff; border-radius: var(--radius-sm);
+      text-decoration: none; transition: background .18s, transform .18s;
+    }
+    .btn-seo-cta:hover { background: #2d3138; text-decoration: none; transform: translateY(-1px); }
+    .seo-split {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center;
+    }
+    .seo-split--reverse .seo-split-copy { order: 1; }
+    .seo-split--reverse .seo-split-visual { order: 2; }
+    .seo-visual {
+      border-radius: 16px; overflow: hidden;
+      border: 1px solid var(--border); background: var(--surface);
+      box-shadow: var(--shadow);
+    }
+    .seo-visual .seo-img-slot { border-radius: 0; }
+    /* Neutral image slots — set img src + add .has-image when assets are ready */
+    .seo-img-slot {
+      position: relative; width: 100%; overflow: hidden;
+      background: #eef1f5; display: flex; align-items: center; justify-content: center;
+    }
+    .seo-img-slot--4-3 { aspect-ratio: 4 / 3; }
+    .seo-img-slot--16-10 { aspect-ratio: 16 / 10; }
+    .seo-img-slot--1-1 { aspect-ratio: 1 / 1; }
+    .seo-img-slot__img {
+      position: absolute; inset: 0; width: 100%; height: 100%;
+      object-fit: cover; display: block;
+    }
+    .seo-img-slot__img--contain { object-fit: contain; }
+    .seo-img-slot__img--pos-left { object-position: 12% center; }
+    .seo-img-slot__img--pos-right { object-position: 72% center; }
+    .seo-step-visual .seo-img-slot.has-image { background: #eef1f5; }
+    .seo-visual .seo-img-slot.has-image:has(.seo-img-slot__img--contain) { background: #eef1f5; }
+    /* Hero: show full collage without cropping */
+    #slot-combine-images-hero .seo-img-slot {
+      aspect-ratio: 1 / 1;
+      overflow: visible;
+      background: #eef1f5;
+    }
+    #slot-combine-images-hero .seo-img-slot__img {
+      object-fit: contain;
+      object-position: center;
+    }
+    /* Styling controls: show full collage without cropping */
+    #slot-styling-controls .seo-img-slot {
+      aspect-ratio: 1 / 1;
+      overflow: visible;
+      background: #eef1f5;
+    }
+    #slot-styling-controls .seo-img-slot__img {
+      object-fit: contain;
+      object-position: center;
+    }
+    /* Intro collage: show full composition */
+    #slot-intro-multiple-photos .seo-img-slot {
+      aspect-ratio: 4 / 3;
+      overflow: visible;
+      background: #eef1f5;
+    }
+    #slot-intro-multiple-photos .seo-img-slot__img {
+      object-fit: contain;
+      object-position: center;
+    }
+    /* Collage examples: preserve full artwork */
+    #slot-side-by-side-example .seo-img-slot__img,
+    #slot-vertical-stack-example .seo-img-slot__img {
+      object-fit: contain;
+      object-position: center;
+    }
+    #slot-vertical-stack-example .seo-img-slot {
+      aspect-ratio: 1 / 1;
+      overflow: visible;
+      background: #eef1f5;
+    }
+    #slot-side-by-side-example .seo-img-slot.has-image,
+    #slot-vertical-stack-example .seo-img-slot.has-image {
+      background: #eef1f5;
+    }
+    /* UI screenshots: keep editor preview readable */
+    #slot-auto-grid-example .seo-img-slot__img,
+    #slot-auto-grid-reuse .seo-img-slot__img {
+      object-fit: contain;
+      object-position: center;
+    }
+    #slot-auto-grid-example .seo-img-slot.has-image,
+    #slot-auto-grid-reuse .seo-img-slot.has-image {
+      background: #eef1f5;
+    }
+    .seo-img-slot__img:not([src]), .seo-img-slot__img[src=""] { display: none; }
+    .seo-img-slot.has-image .seo-img-slot__placeholder { display: none; }
+    .seo-img-slot.has-image .seo-img-slot__img[src]:not([src=""]) { display: block; }
+    .seo-img-slot__placeholder {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 6px; padding: 24px; text-align: center; width: 100%; height: 100%;
+      border: 1px dashed #c5cad3; border-radius: inherit; margin: 12px;
+      width: calc(100% - 24px); height: calc(100% - 24px);
+      box-sizing: border-box;
+    }
+    .seo-img-slot__id {
+      font-size: 12px; font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #6b7280; letter-spacing: -.01em;
+    }
+    .seo-img-slot__ratio {
+      font-size: 11px; color: #9ca3af;
+    }
+    .seo-step-visual .seo-img-slot {
+      height: 100%; aspect-ratio: auto; min-height: 100%; border-radius: 0;
+    }
+    .seo-step-visual .seo-img-slot__placeholder {
+      margin: 8px; width: calc(100% - 16px); height: calc(100% - 16px);
+    }
+    /* Step cards */
+    .seo-steps-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+    }
+    .seo-step-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+      transition: transform .18s, box-shadow .18s, border-color .18s;
+    }
+    .seo-step-card:hover {
+      transform: translateY(-2px); box-shadow: var(--shadow);
+      border-color: rgba(45,159,111,.25);
+    }
+    .seo-step-visual {
+      aspect-ratio: 4 / 3; background: var(--bg);
+      border-bottom: 1px solid var(--border); position: relative; overflow: hidden;
+    }
+    .seo-step-num {
+      font-size: 12px; font-weight: 700; color: var(--accent);
+      letter-spacing: .04em; padding: 16px 18px 0;
+    }
+    .seo-step-card h3 {
+      font-size: 17px; font-weight: 700; padding: 8px 18px 0; color: var(--text);
+    }
+    .seo-step-card p {
+      font-size: 14px; line-height: 1.6; color: var(--text-muted);
+      padding: 8px 18px 20px; margin: 0;
+    }
+
+    /* FAQ */
+    .seo-faq { max-width: 800px; margin: 0 auto; }
+    .faq-list { margin-top: 8px; }
+    .faq-item { border-bottom: 1px solid var(--border); }
+    .faq-item summary {
+      padding: 16px 0; font-size: 16px; font-weight: 600;
+      cursor: pointer; list-style: none; display: flex;
+      justify-content: space-between; align-items: center; line-height: 1.45;
+    }
+    .faq-item summary::-webkit-details-marker { display: none; }
+    .faq-item summary::after { content: '+'; font-size: 20px; color: var(--accent); font-weight: 400; flex-shrink: 0; margin-left: 16px; }
+    .faq-item[open] summary::after { content: '−'; }
+    .faq-item p { padding: 0 0 16px; font-size: 15px; color: var(--text-muted); line-height: 1.65; margin: 0; }
+
+    /* Footer */
+    .footer {
+      text-align: center; padding: 32px 20px;
+      border-top: 1px solid var(--border);
+      font-size: 13px; color: var(--text-muted);
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(100px);
+      background: var(--text); color: #fff; padding: 12px 24px;
+      border-radius: var(--radius-sm); font-size: 14px; font-weight: 500;
+      box-shadow: var(--shadow-lg); z-index: 1000;
+      transition: transform .3s ease; pointer-events: none;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* Error toast */
+    .toast.error { background: var(--danger); }
+
+    /* Desktop scale */
+    @media (min-width: 1101px) {
+      .editor-card {
+        min-height: 680px;
+        max-height: 760px;
+      }
+      .editor-grid { min-height: 0; }
+      .panel-center { min-height: 520px; }
+      .canvas-container { min-height: 480px; }
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .editor-grid { grid-template-columns: 260px 1fr 280px; }
+    }
+    @media (max-width: 960px) {
+      .seo-steps-grid { grid-template-columns: 1fr; }
+      .seo-split { grid-template-columns: 1fr; gap: 28px; }
+      .seo-split--image-first-mobile .seo-split-visual { order: -1; }
+      .seo-split--image-first-mobile .seo-split-copy { order: 0; }
+      .editor-card { max-height: none; min-height: auto; }
+      .editor-grid {
+        grid-template-columns: 1fr;
+        min-height: auto; overflow: visible;
+      }
+      .panel { border-right: none; border-bottom: 1px solid var(--border); max-height: none; overflow: visible; padding: 18px; }
+      .panel:last-child { border-left: none; }
+      .panel-center { min-height: 300px; order: 0; overflow: visible; padding: 20px; }
+      .panel-left { order: -1; }
+      .panel-left.is-empty .upload-zone { min-height: 280px; }
+      .canvas-container { min-height: 280px; }
+      .nav-links { gap: 16px; }
+      .hero { padding: 28px 20px 20px; }
+      .hero-sub { font-size: 16px; }
+      .feature-highlights { gap: 12px 24px; padding: 12px 20px 24px; }
+    }
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .seo-steps-grid { grid-template-columns: repeat(3, 1fr); gap: 14px; }
+    }
+    @media (max-width: 480px) {
+      .thumb-list { grid-template-columns: 1fr; }
+      .action-bar { flex-direction: column; gap: 12px; padding: 14px 18px; }
+      .action-right { width: 100%; }
+      .btn-download { flex: 1; text-align: center; }
+      .layout-grid { grid-template-columns: repeat(2, 1fr); }
+      .feature-highlights { flex-direction: column; align-items: flex-start; padding-left: 32px; }
+      .seo-split { grid-template-columns: 1fr; gap: 32px; }
+      .seo-split--image-first-mobile .seo-split-visual { order: -1; }
+      .seo-split--image-first-mobile .seo-split-copy { order: 0; }
+      .seo-steps-grid { grid-template-columns: 1fr; }
+      .seo-section { padding: 40px 0; }
+    }
+
+    /* Focus */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+  <div class="header-inner">
+    <a href="#" class="logo" aria-label="Combine Images Online home">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="8" rx="1"/><rect x="13" y="3" width="8" height="8" rx="1"/><rect x="3" y="13" width="8" height="8" rx="1"/><rect x="13" y="13" width="8" height="8" rx="1"/></svg>
+      </div>
+      Combine Images Online
+    </a>
+    <nav class="nav-links" aria-label="Main navigation">
+      <a href="#how-it-works">How It Works</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+  </div>
+</header>
+
+<!-- Hero -->
+<section class="hero">
+  <h1>Combine Images Online</h1>
+  <p class="hero-sub">Combine two images or multiple photos into one. Choose a layout, customize the look, and download your image instantly.</p>
+</section>
+
+<!-- Editor -->
+<div class="editor-wrap" id="editor">
+  <div class="editor-card">
+    <div class="editor-grid">
+      <!-- Left Panel -->
+      <div class="panel panel-left is-empty" id="panelLeft">
+        <div class="panel-title">Images &amp; Layouts</div>
+
+        <!-- Upload -->
+        <div class="upload-zone" id="uploadZone" role="button" tabindex="0" aria-label="Upload images">
+          <div class="upload-zone-content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <h3>Upload Images</h3>
+            <p>Drop images here or click to browse</p>
+            <p>Supports JPG, PNG, and WebP · Up to 9 images</p>
+          </div>
+        </div>
+        <input type="file" id="fileInput" accept="image/jpeg,image/jpg,image/png,image/webp" multiple hidden>
+        <div class="images-block hidden" id="imagesBlock">
+          <div class="section-label">Your Images</div>
+          <div class="thumb-list" id="thumbList"></div>
+          <button class="btn-add" id="btnAddImages" type="button">+ Add Images</button>
+          <p class="helper-text" id="reorderHint" style="display:none">Drag to reorder</p>
+          <div class="min-images-notice" id="minImagesNotice" role="status">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Add at least 2 images to create a combined image.</span>
+          </div>
+        </div>
+
+        <!-- Layouts -->
+        <div class="layout-section" id="layoutSection" style="display:none">
+          <div id="layoutGroups"></div>
+        </div>
+      </div>
+
+      <!-- Center Panel -->
+      <div class="panel panel-center">
+        <div class="canvas-container is-empty" id="canvasContainer" role="button" tabindex="0" aria-label="Upload images to create your combined image">
+          <div class="canvas-placeholder" id="canvasPlaceholder">
+            <div class="collage-preview-wrap">
+              <div class="collage-preview" aria-hidden="true">
+                <div class="collage-block collage-block-a"></div>
+                <div class="collage-block collage-block-b"></div>
+                <div class="collage-block collage-block-c"></div>
+                <div class="collage-block collage-block-d"></div>
+              </div>
+              <span class="placeholder-tooltip">Upload photos to start</span>
+            </div>
+            <strong>Your combined image will appear here</strong>
+            <p>Click anywhere to upload images or drag and drop them here</p>
+            <button class="btn-canvas-upload" id="btnCanvasUpload" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Upload Images
+            </button>
+          </div>
+          <canvas id="previewCanvas" style="display:none"></canvas>
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="panel panel-right">
+        <div class="settings-tabs">
+          <button class="settings-tab active" id="tabCanvas" type="button">Canvas</button>
+          <button class="settings-tab" id="tabImage" type="button" disabled>Selected Image</button>
+        </div>
+        <div id="canvasSettings">
+          <div class="settings-group">
+            <div class="settings-label">Aspect Ratio</div>
+            <div class="btn-group" id="aspectRatioGroup">
+              <button class="btn-pill" data-ratio="original" type="button">Original</button>
+              <button class="btn-pill active" data-ratio="1:1" type="button">1:1</button>
+              <button class="btn-pill" data-ratio="4:5" type="button">4:5</button>
+              <button class="btn-pill" data-ratio="9:16" type="button">9:16</button>
+            </div>
+            <details class="more-ratios" id="moreRatios">
+              <summary>More ratios</summary>
+              <div class="btn-group" id="aspectRatioMore">
+                <button class="btn-pill" data-ratio="16:9" type="button">16:9</button>
+                <button class="btn-pill" data-ratio="4:3" type="button">4:3</button>
+                <button class="btn-pill" data-ratio="3:4" type="button">3:4</button>
+                <button class="btn-pill" data-ratio="3:2" type="button">3:2</button>
+                <button class="btn-pill" data-ratio="2:3" type="button">2:3</button>
+              </div>
+            </details>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Spacing <span class="settings-value" id="spacingVal">16 px</span></div>
+            <input type="range" id="spacing" min="0" max="40" value="16" aria-label="Spacing">
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Border Width <span class="settings-value" id="borderWidthVal">0 px</span></div>
+            <input type="range" id="borderWidth" min="0" max="20" value="0" aria-label="Border width">
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Border Color</div>
+            <div class="color-field-label">Color presets</div>
+            <div class="color-presets" id="borderColorPresets">
+              <button class="color-swatch active" data-color="#ffffff" style="background:#fff" aria-label="White" type="button"></button>
+              <button class="color-swatch" data-color="#000000" style="background:#000" aria-label="Black" type="button"></button>
+              <button class="color-swatch" data-color="#d1d5db" style="background:#d1d5db" aria-label="Light Gray" type="button"></button>
+              <button class="color-swatch" data-color="#f5f0e6" style="background:#f5f0e6" aria-label="Cream" type="button"></button>
+              <button class="color-swatch" data-color="#2d9f6f" style="background:#2d9f6f" aria-label="Soft Green" type="button"></button>
+              <button class="color-swatch color-swatch-custom" data-custom="true" type="button">Custom</button>
+            </div>
+            <div class="color-field-custom hidden" id="borderColorCustomWrap">
+              <div class="color-field-label">Custom color</div>
+              <div class="color-custom-panel hidden" id="borderColorCustomPanel">
+                <button type="button" class="color-current-swatch" id="borderColorPreview" style="background:#ffffff" aria-label="Open border color picker"></button>
+                <input type="color" class="color-picker-native" id="borderColorPicker" value="#ffffff" aria-label="Border color picker">
+                <input type="text" class="hex-input" id="borderColorHex" value="#FFFFFF" aria-label="Border color HEX" maxlength="7">
+                <button type="button" class="btn-eyedropper" id="borderColorEyedropper" aria-label="Pick a color from your screen" title="Pick a color from your screen">
+                  <span class="eyedropper-icon"><span class="eyedropper-wheel"></span><svg class="eyedropper-pipette" viewBox="0 0 32 32" aria-hidden="true"><path d="M21 4l3 3-9 9-3-3 9-9z" fill="#2d3748"/><path d="M12 13l3 3" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><path d="M6 26h6l-3-3" fill="#2d3748"/><circle cx="22" cy="7" r="1.5" fill="#4fc3f7"/></svg></span>
+                </button>
+              </div>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Corner Radius <span class="settings-value" id="cornerRadiusVal">16 px</span></div>
+            <input type="range" id="cornerRadius" min="0" max="48" value="16" aria-label="Corner radius">
+          </div>
+          <div class="settings-group bg-section">
+            <div class="bg-section-heading">Background</div>
+            <div class="bg-segmented" id="bgTabs" role="tablist" aria-label="Background type">
+              <button class="bg-tab active" data-bg-tab="color" type="button" role="tab" aria-selected="true">Color</button>
+              <button class="bg-tab" data-bg-tab="texture" type="button" role="tab" aria-selected="false">Texture</button>
+              <button class="bg-tab" data-bg-tab="image" type="button" role="tab" aria-selected="false">Image</button>
+            </div>
+            <div class="bg-tab-content">
+              <div class="bg-tab-panel" id="bgTabColor" role="tabpanel">
+                <div class="color-field-label">Color presets</div>
+                <div class="color-presets" id="bgColorPresets">
+                  <button class="color-swatch active" data-color="#ffffff" style="background:#fff" aria-label="White" type="button"></button>
+                  <button class="color-swatch" data-color="#000000" style="background:#000" aria-label="Black" type="button"></button>
+                  <button class="color-swatch" data-color="#f3f4f6" style="background:#f3f4f6" aria-label="Light Gray" type="button"></button>
+                  <button class="color-swatch transparent-bg" data-color="transparent" aria-label="Transparent" type="button"></button>
+                  <button class="color-swatch" data-color="#f5ebe0" style="background:#f5ebe0" aria-label="Warm Beige" type="button"></button>
+                  <button class="color-swatch" data-color="#e8f5ef" style="background:#e8f5ef" aria-label="Pale Green" type="button"></button>
+                  <button class="color-swatch color-swatch-custom" data-custom="true" type="button">Custom</button>
+                </div>
+                <div class="color-field-custom hidden" id="bgColorCustomWrap">
+                  <div class="color-field-label">Custom color</div>
+                  <div class="color-custom-panel hidden" id="bgColorCustomPanel">
+                    <button type="button" class="color-current-swatch" id="bgColorPreview" style="background:#ffffff" aria-label="Open background color picker"></button>
+                    <input type="color" class="color-picker-native" id="bgColorPicker" value="#ffffff" aria-label="Background color picker">
+                    <input type="text" class="hex-input" id="bgColorHex" value="#FFFFFF" aria-label="Background color HEX" maxlength="7">
+                    <button type="button" class="btn-eyedropper" id="bgColorEyedropper" aria-label="Pick a color from your screen" title="Pick a color from your screen">
+                      <span class="eyedropper-icon"><span class="eyedropper-wheel"></span><svg class="eyedropper-pipette" viewBox="0 0 32 32" aria-hidden="true"><path d="M21 4l3 3-9 9-3-3 9-9z" fill="#2d3748"/><path d="M12 13l3 3" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><path d="M6 26h6l-3-3" fill="#2d3748"/><circle cx="22" cy="7" r="1.5" fill="#4fc3f7"/></svg></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="bg-tab-panel hidden" id="bgTabTexture" role="tabpanel">
+                <div class="texture-grid" id="bgTextureGroup">
+                  <button class="texture-card active" data-texture="none" type="button" aria-pressed="true">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-none"></div>
+                    <span class="texture-card-label">None</span>
+                  </button>
+                  <button class="texture-card" data-texture="soft-grid" type="button" aria-pressed="false">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-soft-grid"></div>
+                    <span class="texture-card-label">Soft Grid</span>
+                  </button>
+                  <button class="texture-card" data-texture="dots" type="button" aria-pressed="false">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-dots"></div>
+                    <span class="texture-card-label">Dots</span>
+                  </button>
+                  <button class="texture-card" data-texture="diagonal" type="button" aria-pressed="false">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-diagonal"></div>
+                    <span class="texture-card-label">Diagonal Lines</span>
+                  </button>
+                  <button class="texture-card" data-texture="paper" type="button" aria-pressed="false">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-paper"></div>
+                    <span class="texture-card-label">Paper Grain</span>
+                  </button>
+                  <button class="texture-card" data-texture="checkerboard" type="button" aria-pressed="false">
+                    <span class="texture-card-check" aria-hidden="true">✓</span>
+                    <div class="texture-preview texture-preview-checkerboard"></div>
+                    <span class="texture-card-label">Checkerboard</span>
+                  </button>
+                </div>
+                <div class="texture-intensity-block hidden" id="textureIntensityBlock">
+                  <div class="control-sublabel">Texture intensity <span class="settings-value" id="bgTextureOpacityVal">40%</span></div>
+                  <p class="control-helper">Controls how visible the pattern appears behind your images.</p>
+                  <input type="range" id="bgTextureOpacity" min="0" max="100" value="40" aria-label="Texture intensity">
+                  <div class="slider-hints"><span>Subtle</span><span>Strong</span></div>
+                </div>
+              </div>
+              <div class="bg-tab-panel hidden" id="bgTabImage" role="tabpanel">
+                <div class="bg-upload-card" id="bgUploadCard" role="button" tabindex="0" aria-label="Upload background image">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 16l-5-5-4 4-2-2-5 5"/></svg>
+                  <strong>Upload background image</strong>
+                  <span>Use a photo behind your collage</span>
+                </div>
+                <input type="file" id="bgImageInput" accept="image/jpeg,image/jpg,image/png,image/webp" hidden>
+                <div class="bg-image-card hidden" id="bgImageCard">
+                  <div class="bg-image-preview-wrap">
+                    <img id="bgImageThumb" src="" alt="Background image preview">
+                  </div>
+                  <div class="bg-image-actions">
+                    <button class="btn-secondary" id="btnReplaceBgImage" type="button">Replace</button>
+                    <button class="btn-secondary btn-danger" id="btnRemoveBgImage" type="button">Remove</button>
+                  </div>
+                  <div class="bg-image-controls" id="bgImageControls">
+                    <div>
+                      <div class="control-sublabel">Fit / Fill</div>
+                      <div class="fit-segmented" id="bgImageFitGroup">
+                        <button class="btn-pill active" data-bg-fit="fill" type="button">Fill</button>
+                        <button class="btn-pill" data-bg-fit="fit" type="button">Fit</button>
+                      </div>
+                    </div>
+                    <div>
+                      <div class="control-sublabel">Opacity <span class="settings-value" id="bgImageOpacityVal">100%</span></div>
+                      <input type="range" id="bgImageOpacity" min="0" max="100" value="100" aria-label="Background image opacity">
+                    </div>
+                    <div>
+                      <div class="control-sublabel">Blur <span class="settings-value" id="bgImageBlurVal">0 px</span></div>
+                      <input type="range" id="bgImageBlur" min="0" max="20" value="0" aria-label="Background image blur">
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <details class="text-section" id="textSection">
+            <summary>Text <span style="font-weight:500;color:var(--accent)" id="textToggleLabel">+ Add Text</span></summary>
+            <div class="text-controls" id="textControls" style="display:none">
+              <input type="text" class="text-input" id="textInput" placeholder="Add a caption" aria-label="Text content">
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Font</div>
+                <select class="select-input" id="textFont" aria-label="Font family">
+                  <option value="modern">Modern Sans</option>
+                  <option value="friendly">Friendly Sans</option>
+                  <option value="classic">Classic Serif</option>
+                  <option value="editorial">Editorial Serif</option>
+                  <option value="mono">Monospace</option>
+                  <option value="handwritten">Handwritten</option>
+                  <option value="playful">Playful</option>
+                  <option value="elegant">Elegant Script</option>
+                </select>
+              </div>
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Style</div>
+                <div class="btn-group" id="textStyleGroup">
+                  <button class="btn-pill active" data-weight="normal" type="button">Regular</button>
+                  <button class="btn-pill" data-weight="bold" type="button">Bold</button>
+                </div>
+              </div>
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Font Size</div>
+                <div class="font-size-row">
+                  <input type="range" id="fontSize" min="12" max="120" value="28" aria-label="Font size">
+                  <input type="number" class="font-size-input" id="fontSizeInput" min="12" max="120" value="28" aria-label="Font size value"> px
+                </div>
+                <div class="font-size-presets" id="fontSizePresets">
+                  <button class="btn-pill" data-size="18" type="button">Small</button>
+                  <button class="btn-pill" data-size="32" type="button">Medium</button>
+                  <button class="btn-pill" data-size="56" type="button">Large</button>
+                </div>
+              </div>
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Text Color</div>
+                <div class="color-field-label">Color presets</div>
+                <div class="color-presets" id="textColorPresets">
+                  <button class="color-swatch active" data-color="#000000" style="background:#000" aria-label="Black" type="button"></button>
+                  <button class="color-swatch" data-color="#ffffff" style="background:#fff" aria-label="White" type="button"></button>
+                  <button class="color-swatch" data-color="#4b5563" style="background:#4b5563" aria-label="Dark Gray" type="button"></button>
+                  <button class="color-swatch" data-color="#2d9f6f" style="background:#2d9f6f" aria-label="Soft Green" type="button"></button>
+                  <button class="color-swatch" data-color="#e8953a" style="background:#e8953a" aria-label="Warm Orange" type="button"></button>
+                  <button class="color-swatch color-swatch-custom" data-custom="true" type="button">Custom</button>
+                </div>
+                <div class="color-field-custom hidden" id="textColorCustomWrap">
+                  <div class="color-field-label">Custom color</div>
+                  <div class="color-custom-panel hidden" id="textColorCustomPanel">
+                    <button type="button" class="color-current-swatch" id="textColorPreview" style="background:#000000" aria-label="Open text color picker"></button>
+                    <input type="color" class="color-picker-native" id="textColorPicker" value="#000000" aria-label="Text color picker">
+                    <input type="text" class="hex-input" id="textColorHex" value="#000000" aria-label="Text color HEX" maxlength="7">
+                    <button type="button" class="btn-eyedropper" id="textColorEyedropper" aria-label="Pick a color from your screen" title="Pick a color from your screen">
+                      <span class="eyedropper-icon"><span class="eyedropper-wheel"></span><svg class="eyedropper-pipette" viewBox="0 0 32 32" aria-hidden="true"><path d="M21 4l3 3-9 9-3-3 9-9z" fill="#2d3748"/><path d="M12 13l3 3" stroke="#fff" stroke-width="1.2" stroke-linecap="round"/><path d="M6 26h6l-3-3" fill="#2d3748"/><circle cx="22" cy="7" r="1.5" fill="#4fc3f7"/></svg></span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Text Position</div>
+                <div class="text-pos-grid" id="textPositionGrid">
+                  <button class="text-pos-btn" data-pos="tl" type="button" aria-label="Top Left">TL</button>
+                  <button class="text-pos-btn" data-pos="tc" type="button" aria-label="Top Center">TC</button>
+                  <button class="text-pos-btn" data-pos="tr" type="button" aria-label="Top Right">TR</button>
+                  <button class="text-pos-btn" data-pos="ml" type="button" aria-label="Middle Left">ML</button>
+                  <button class="text-pos-btn active" data-pos="mc" type="button" aria-label="Center">MC</button>
+                  <button class="text-pos-btn" data-pos="mr" type="button" aria-label="Middle Right">MR</button>
+                  <button class="text-pos-btn" data-pos="bl" type="button" aria-label="Bottom Left">BL</button>
+                  <button class="text-pos-btn" data-pos="bc" type="button" aria-label="Bottom Center">BC</button>
+                  <button class="text-pos-btn" data-pos="br" type="button" aria-label="Bottom Right">BR</button>
+                </div>
+              </div>
+              <div class="settings-group" style="margin:0">
+                <div class="settings-label">Inset / Margin <span class="settings-value" id="textInsetVal">20 px</span></div>
+                <input type="range" id="textInset" min="0" max="80" value="20" aria-label="Text inset">
+              </div>
+              <button class="btn-secondary btn-danger" id="btnRemoveText" type="button">Remove Text</button>
+            </div>
+          </details>
+        </div>
+        <div id="imageSettings" style="display:none">
+          <p class="settings-value" id="imageSettingsLabel" style="margin-bottom:16px;font-size:14px"></p>
+          <div class="settings-group">
+            <div class="settings-label">Image Fit</div>
+            <div class="btn-group" id="fitModeGroup">
+              <button class="btn-pill active" data-fit="fill" type="button">Fill</button>
+              <button class="btn-pill" data-fit="fit" type="button">Fit</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Zoom <span class="settings-value" id="zoomVal">100%</span></div>
+            <input type="range" id="zoom" min="50" max="200" value="100" aria-label="Image zoom">
+          </div>
+          <div class="settings-group">
+            <div class="settings-label">Position</div>
+            <p style="font-size:14px;color:var(--text-muted);margin-bottom:10px;line-height:1.5">Drag the image on the canvas to reposition it within its cell.</p>
+            <div class="btn-row">
+              <button class="btn-secondary" id="btnCenterImage" type="button">Center Image</button>
+              <button class="btn-secondary" id="btnResetImage" type="button">Reset Image</button>
+            </div>
+          </div>
+          <div class="settings-group">
+            <button class="btn-secondary" id="btnReplaceImage" type="button" style="width:100%">Replace Image</button>
+            <input type="file" id="replaceInput" accept="image/jpeg,image/jpg,image/png,image/webp" hidden>
+          </div>
+          <div class="settings-group">
+            <button class="btn-secondary btn-danger" id="btnRemoveImage" type="button" style="width:100%">Remove Image</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <button class="btn-reset" id="btnReset" type="button">Reset</button>
+      <div class="action-right">
+        <button class="btn-download btn-download-png" id="btnDownloadPng" type="button" disabled>Download PNG</button>
+        <button class="btn-download btn-download-jpg" id="btnDownloadJpg" type="button" disabled>Download JPG</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="privacy-line">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    Your images stay on your device. Nothing is uploaded to our servers.
+  </div>
+
+  <div class="feature-highlights">
+    <div class="feature-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      Combine 2–9 images
+    </div>
+    <div class="feature-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+      Auto grid layouts
+    </div>
+    <div class="feature-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="12" x2="21" y2="12"/></svg>
+      Add borders, text, and spacing
+    </div>
+  </div>
+</div>
+
+<!-- SEO Landing Content -->
+<div class="seo-landing">
+
+  <!-- 1. Hero SEO -->
+  <section class="seo-section">
+    <div class="seo-split">
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Create a Custom Image Layout in Minutes</h2>
+        <p class="seo-lead">Turn separate photos into one polished image for comparisons, travel memories, product displays, photo dumps, or social posts. Upload up to 9 images, choose a side-by-side, vertical, or grid layout, then personalize the spacing, borders, rounded corners, and background before downloading your final image.</p>
+        <a href="#editor" class="btn-seo-cta">Combine Images Now</a>
+      </div>
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-combine-images-hero">
+          <div class="seo-img-slot seo-img-slot--1-1 has-image" data-slot="combine-images-hero">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="combine-images-hero" src="assets/combine-images-hero.jpg" alt="Multiple photos combined into one customizable image layout." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">combine-images-hero</span>
+              <span class="seo-img-slot__ratio">16:10</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2. Short Intro -->
+  <section class="seo-section">
+    <div class="seo-split">
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Create One Image from Multiple Photos</h2>
+        <p class="seo-lead">Turn separate photos into one polished image for comparisons, product displays, travel memories, or social posts. Choose a layout, refine the details, and download a ready-to-share result.</p>
+        <a href="#editor" class="btn-seo-cta">Start Combining Images</a>
+      </div>
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-intro-multiple-photos">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="intro-multiple-photos">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="intro-multiple-photos" src="assets/intro-multiple-photos.jpg" alt="Several photos arranged into one polished image layout." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">intro-multiple-photos</span>
+              <span class="seo-img-slot__ratio">16:10</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. How to Combine Images -->
+  <section class="seo-section" id="how-it-works">
+    <div class="seo-section-head">
+      <h2 class="seo-h2">How to Combine Images</h2>
+    </div>
+    <div class="seo-steps-grid">
+      <article class="seo-step-card">
+        <div class="seo-step-visual" id="slot-how-to-upload">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="how-to-upload">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="how-to-upload" src="assets/how-to-upload.png" alt="Upload images interface for the online image combiner." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">how-to-upload</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </div>
+        <p class="seo-step-num">01</p>
+        <h3>Upload Images</h3>
+        <p>Upload 2 to 9 photos from your device and add them to the editor.</p>
+      </article>
+      <article class="seo-step-card">
+        <div class="seo-step-visual" id="slot-how-to-layout">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="how-to-layout">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="how-to-layout" src="assets/how-to-layout.png" alt="Layout options for combining images side by side, vertically, or in a grid." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">how-to-layout</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </div>
+        <p class="seo-step-num">02</p>
+        <h3>Choose a Layout</h3>
+        <p>Select a side-by-side, vertical, grid, or auto layout that fits your images.</p>
+      </article>
+      <article class="seo-step-card">
+        <div class="seo-step-visual" id="slot-how-to-customize">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="how-to-customize">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="how-to-customize" src="assets/how-to-customize.png" alt="Customization controls for spacing, borders, background, and text." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">how-to-customize</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </div>
+        <p class="seo-step-num">03</p>
+        <h3>Customize and Download</h3>
+        <p>Adjust spacing, borders, corners, and background, then save your image as PNG or JPG.</p>
+      </article>
+    </div>
+  </section>
+
+  <!-- 4. Feature: Side by Side -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--image-first-mobile">
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-side-by-side-example">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="side-by-side-example">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="side-by-side-example" src="assets/side-by-side-example.png" alt="Two photos combined side by side in one image layout." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">side-by-side-example</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Combine Two Images Side by Side</h2>
+        <p class="seo-lead">Put two photos together for before-and-after comparisons, product views, profile pairs, or social posts. Choose a horizontal or vertical layout, then adjust spacing and background for a balanced result.</p>
+        <a href="#editor" class="btn-seo-cta">Combine Two Images</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Feature: Vertical Stack -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--reverse seo-split--image-first-mobile">
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Stack Images Vertically</h2>
+        <p class="seo-lead">Create a vertical image layout for portrait photos, step-by-step comparisons, long product visuals, or mobile-friendly posts. Arrange images in a clean column and fine-tune spacing for a smoother flow.</p>
+        <a href="#editor" class="btn-seo-cta">Stack Images Vertically</a>
+      </div>
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-vertical-stack-example">
+          <div class="seo-img-slot seo-img-slot--1-1 has-image" data-slot="vertical-stack-example">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="vertical-stack-example" src="assets/vertical-stack-example.png" alt="Multiple photos stacked vertically in one combined image." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">vertical-stack-example</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Feature: Merge Multiple -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--image-first-mobile">
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-auto-grid-example">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="auto-grid-example">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="auto-grid-example" src="assets/auto-grid-example.png" alt="Multiple photos merged into one automatic grid layout." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">auto-grid-example</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Merge Multiple Images into One</h2>
+        <p class="seo-lead">Upload up to 9 images and turn them into a clean photo grid, travel recap, product collection, or photo dump. Start with an auto layout, then personalize the final composition your way.</p>
+        <a href="#editor" class="btn-seo-cta">Merge Multiple Images</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7. Feature: Image Grid -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--reverse seo-split--image-first-mobile">
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Build a Grid That Fits Your Photos</h2>
+        <p class="seo-lead">Choose an automatic layout based on your image count, then create a balanced grid without arranging every photo manually. It is ideal for photo collections, event recaps, and product image sets.</p>
+        <a href="#editor" class="btn-seo-cta">Create an Image Grid</a>
+      </div>
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-auto-grid-reuse">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="auto-grid-example">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="auto-grid-example" src="assets/auto-grid-example.png" alt="Automatic image grid layouts for combining multiple photos." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">auto-grid-example</span>
+              <span class="seo-img-slot__ratio">4:3 · reused</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8. Feature: Styling -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--image-first-mobile">
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-styling-controls">
+          <div class="seo-img-slot seo-img-slot--1-1 has-image" data-slot="styling-controls">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="styling-controls" src="assets/styling-controls.png" alt="Image combiner with customizable borders, spacing, and background color." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">styling-controls</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Customize Spacing, Borders, and Backgrounds</h2>
+        <p class="seo-lead">Make your combined image feel more polished with adjustable gaps, rounded corners, borders, and background colors. Small design changes help your photos look cleaner and more intentional.</p>
+        <a href="#editor" class="btn-seo-cta">Customize Your Layout</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9. Feature: Download -->
+  <section class="seo-section">
+    <div class="seo-split seo-split--reverse seo-split--image-first-mobile">
+      <div class="seo-split-copy">
+        <h2 class="seo-h2">Download a Share-Ready Image</h2>
+        <p class="seo-lead">Export your finished layout as a PNG or JPG file for social posts, product pages, presentations, or personal photo collections. Keep multiple images together in one easy-to-share file.</p>
+        <a href="#editor" class="btn-seo-cta">Download Your Image</a>
+      </div>
+      <div class="seo-split-visual">
+        <figure class="seo-visual" id="slot-export-preview">
+          <div class="seo-img-slot seo-img-slot--4-3 has-image" data-slot="export-preview">
+            <img class="seo-img-slot__img seo-img-slot__img--contain" data-slot="export-preview" src="assets/export-preview.png" alt="Preview of a combined image ready to export." loading="lazy" decoding="async">
+            <div class="seo-img-slot__placeholder" aria-hidden="true">
+              <span class="seo-img-slot__id">export-preview</span>
+              <span class="seo-img-slot__ratio">4:3</span>
+            </div>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10. FAQ -->
+  <section class="seo-section">
+    <div class="seo-faq">
+      <h2 class="seo-h2" id="faq" style="text-align:center;margin-bottom:8px">Image Combiner FAQ</h2>
+      <div class="faq-list">
+        <details class="faq-item">
+          <summary>How do I combine two images into one?</summary>
+          <p>Upload two photos, choose a side-by-side or vertical layout, then customize and download the result.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I combine more than two images?</summary>
+          <p>Yes. You can upload and arrange up to 9 images in one layout.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I put images side by side or vertically?</summary>
+          <p>Yes. Choose a horizontal, vertical, grid, or auto layout based on your images and intended use.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Can I add borders or a background color?</summary>
+          <p>Yes. Adjust spacing, borders, corner radius, and background to match your design.</p>
+        </details>
+        <details class="faq-item">
+          <summary>What image formats can I download?</summary>
+          <p>Download your combined image as a PNG or JPG file.</p>
+        </details>
+        <details class="faq-item">
+          <summary>Does this tool use AI to merge photos?</summary>
+          <p>No. This tool arranges your uploaded images into one layout without generating new image content.</p>
+        </details>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<footer class="footer">
+  <p>&copy; 2026 Combine Images Online.</p>
+</footer>
+
+<div class="toast" id="toast" role="alert"></div>
+
+<script>
+(function() {
+  'use strict';
+
+  const MAX_IMAGES = 9;
+  const MIN_IMAGES = 2;
+  const MAX_EXPORT = 2048;
+  const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+  // State
+  let images = []; // { id, src, img, zoom, offsetX, offsetY, fitMode }
+  let nextId = 1;
+  let selectedId = null;
+  let layoutMode = 'side-by-side';
+  let prevImageCount = 0;
+  let aspectRatio = '1:1';
+  let spacing = 16;
+  let borderWidth = 0;
+  let borderColor = '#ffffff';
+  let cornerRadius = 16;
+  let bgColor = '#ffffff';
+  let bgMode = 'color';
+  let bgTexture = 'none';
+  let bgTextureOpacity = 40;
+  let bgImage = null; // { src, img, fitMode, opacity, blur }
+  let textLayer = null;
+  let dragThumbIndex = null;
+  let canvasDrag = null;
+
+  const ASPECT_RATIOS = {
+    '1:1': 1, '4:5': 4/5, '9:16': 9/16, '16:9': 16/9,
+    '4:3': 4/3, '3:4': 3/4, '3:2': 3/2, '2:3': 2/3
+  };
+
+  const FONT_FAMILIES = {
+    modern: 'Arial, Helvetica, sans-serif',
+    friendly: 'Trebuchet MS, Arial, sans-serif',
+    classic: 'Georgia, serif',
+    editorial: 'Times New Roman, serif',
+    mono: 'Courier New, monospace',
+    handwritten: '"Bradley Hand", "Comic Sans MS", "Chalkboard SE", cursive',
+    playful: '"Marker Felt", "Comic Sans MS", cursive',
+    elegant: '"Snell Roundhand", "Apple Chancery", "Brush Script MT", cursive'
+  };
+
+  const EYEDROPPER_SUPPORTED = 'EyeDropper' in window;
+
+  function defaultTextLayer() {
+    return {
+      text: '', fontSize: 28, color: '#000000', position: 'mc',
+      fontKey: 'modern', fontWeight: 'normal', inset: 20
+    };
+  }
+
+  // DOM
+  const uploadZone = document.getElementById('uploadZone');
+  const fileInput = document.getElementById('fileInput');
+  const btnAddImages = document.getElementById('btnAddImages');
+  const panelLeft = document.getElementById('panelLeft');
+  const imagesBlock = document.getElementById('imagesBlock');
+  const thumbList = document.getElementById('thumbList');
+  const reorderHint = document.getElementById('reorderHint');
+  const layoutSection = document.getElementById('layoutSection');
+  const layoutGroups = document.getElementById('layoutGroups');
+  const canvasContainer = document.getElementById('canvasContainer');
+  const canvasPlaceholder = document.getElementById('canvasPlaceholder');
+  const previewCanvas = document.getElementById('previewCanvas');
+  const minImagesNotice = document.getElementById('minImagesNotice');
+  const tabCanvas = document.getElementById('tabCanvas');
+  const tabImage = document.getElementById('tabImage');
+  const canvasSettings = document.getElementById('canvasSettings');
+  const imageSettings = document.getElementById('imageSettings');
+  const imageSettingsLabel = document.getElementById('imageSettingsLabel');
+  const btnDownloadPng = document.getElementById('btnDownloadPng');
+  const btnDownloadJpg = document.getElementById('btnDownloadJpg');
+  const toast = document.getElementById('toast');
+
+  const ctx = previewCanvas.getContext('2d');
+
+  // Layout definitions — each cell: { col, row, colSpan, rowSpan }
+  const LAYOUTS = {
+    'side-by-side': {
+      name: 'Side by Side',
+      grid: () => ({ cols: 2, rows: 1 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 0, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'stacked': {
+      name: 'Stacked',
+      grid: () => ({ cols: 1, rows: 2 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 1, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'featured-split': {
+      name: 'Featured Split',
+      grid: () => ({ cols: 20, rows: 1 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 13, rowSpan: 1 },
+        { col: 13, row: 0, colSpan: 7, rowSpan: 1 }
+      ]
+    },
+    'featured-left': {
+      name: 'Featured Left',
+      grid: (n) => {
+        if (n === 3) return { cols: 2, rows: 2 };
+        if (n === 4) return { cols: 2, rows: 3 };
+        if (n === 5) return { cols: 3, rows: 2 };
+        if (n === 6) return { cols: 3, rows: 3 };
+        return { cols: 2, rows: 2 };
+      },
+      cells: (n) => {
+        if (n === 3) return [
+          { col: 0, row: 0, colSpan: 1, rowSpan: 2 },
+          { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 4) return [
+          { col: 0, row: 0, colSpan: 1, rowSpan: 3 },
+          { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 2, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 5) return [
+          { col: 0, row: 0, colSpan: 1, rowSpan: 2 },
+          { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 1, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 6) return [
+          { col: 0, row: 0, colSpan: 1, rowSpan: 3 },
+          { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 0, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 2, colSpan: 2, rowSpan: 1 }
+        ];
+        return [];
+      }
+    },
+    'featured-top': {
+      name: 'Featured Top',
+      grid: (n) => {
+        if (n === 3) return { cols: 2, rows: 2 };
+        if (n === 4) return { cols: 3, rows: 2 };
+        if (n === 5) return { cols: 2, rows: 3 };
+        if (n === 6) return { cols: 3, rows: 3 };
+        return { cols: 2, rows: 2 };
+      },
+      cells: (n) => {
+        if (n === 3) return [
+          { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+          { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 4) return [
+          { col: 0, row: 0, colSpan: 3, rowSpan: 1 },
+          { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 1, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 5) return [
+          { col: 0, row: 0, colSpan: 2, rowSpan: 1 },
+          { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 0, row: 2, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 2, colSpan: 1, rowSpan: 1 }
+        ];
+        if (n === 6) return [
+          { col: 0, row: 0, colSpan: 3, rowSpan: 1 },
+          { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 2, row: 1, colSpan: 1, rowSpan: 1 },
+          { col: 0, row: 2, colSpan: 1, rowSpan: 1 },
+          { col: 1, row: 2, colSpan: 1, rowSpan: 1 }
+        ];
+        return [];
+      }
+    },
+    'three-columns': {
+      name: 'Three Columns',
+      grid: () => ({ cols: 3, rows: 1 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 2, row: 0, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'three-rows': {
+      name: 'Three Rows',
+      grid: () => ({ cols: 1, rows: 3 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 2, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'classic-grid': {
+      name: 'Classic Grid',
+      grid: () => ({ cols: 2, rows: 2 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 1, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'featured-right': {
+      name: 'Featured Right',
+      grid: () => ({ cols: 2, rows: 3 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 2, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 0, colSpan: 1, rowSpan: 3 }
+      ]
+    },
+    'four-columns': {
+      name: 'Four Columns',
+      grid: () => ({ cols: 4, rows: 1 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 1, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 2, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 3, row: 0, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'four-rows': {
+      name: 'Four Rows',
+      grid: () => ({ cols: 1, rows: 4 }),
+      cells: () => [
+        { col: 0, row: 0, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 1, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 2, colSpan: 1, rowSpan: 1 },
+        { col: 0, row: 3, colSpan: 1, rowSpan: 1 }
+      ]
+    },
+    'balanced-grid': {
+      name: 'Balanced Grid',
+      grid: (n) => {
+        if (n === 5) return { cols: 6, rows: 2 };
+        if (n === 6) return { cols: 3, rows: 2 };
+        return { cols: 3, rows: 3 };
+      },
+      cells: (n) => {
+        if (n === 5) return [
+          { col: 0, row: 0, colSpan: 3, rowSpan: 1 },
+          { col: 3, row: 0, colSpan: 3, rowSpan: 1 },
+          { col: 0, row: 1, colSpan: 2, rowSpan: 1 },
+          { col: 2, row: 1, colSpan: 2, rowSpan: 1 },
+          { col: 4, row: 1, colSpan: 2, rowSpan: 1 }
+        ];
+        if (n === 6) {
+          const cells = [];
+          for (let r = 0; r < 2; r++)
+            for (let c = 0; c < 3; c++)
+              cells.push({ col: c, row: r, colSpan: 1, rowSpan: 1 });
+          return cells;
+        }
+        const cells = [];
+        for (let r = 0; r < 3; r++)
+          for (let c = 0; c < 3; c++)
+            if (cells.length < n) cells.push({ col: c, row: r, colSpan: 1, rowSpan: 1 });
+        return cells;
+      }
+    }
+  };
+
+  function getSmartDefaultKey(n) {
+    if (n === 2) return 'side-by-side';
+    if (n === 3) return 'featured-left';
+    if (n === 4) return 'classic-grid';
+    if (n === 5) return 'featured-left';
+    if (n === 6) return 'balanced-grid';
+    return 'balanced-grid';
+  }
+
+  function getSelectableLayouts(n) {
+    if (n === 2) return ['side-by-side', 'stacked', 'featured-split'];
+    if (n === 3) return ['featured-left', 'featured-top', 'three-columns', 'three-rows'];
+    if (n === 4) return ['classic-grid', 'featured-left', 'featured-right', 'featured-top', 'four-columns', 'four-rows'];
+    if (n === 5 || n === 6) return ['balanced-grid', 'featured-left', 'featured-top'];
+    if (n >= 7 && n <= 9) return ['balanced-grid'];
+    return [];
+  }
+
+  function syncLayoutForImageCount() {
+    const n = images.length;
+    if (n === 0) {
+      prevImageCount = 0;
+      return;
+    }
+    if (n !== prevImageCount) {
+      layoutMode = getSmartDefaultKey(n);
+      prevImageCount = n;
+      return;
+    }
+    const selectable = getSelectableLayouts(n);
+    if (!selectable.includes(layoutMode)) {
+      layoutMode = getSmartDefaultKey(n);
+    }
+  }
+
+  function getActiveLayoutKey() {
+    const n = images.length;
+    syncLayoutForImageCount();
+    const selectable = getSelectableLayouts(n);
+    if (selectable.includes(layoutMode)) return layoutMode;
+    return getSmartDefaultKey(n);
+  }
+
+  function getActiveLayout() {
+    const key = getActiveLayoutKey();
+    return LAYOUTS[key];
+  }
+
+  function getCanvasDimensions() {
+    const base = 640;
+    if (aspectRatio === 'original') {
+      if (images.length === 0) return { w: base, h: base };
+      const layout = getActiveLayout();
+      const grid = layout.grid(images.length);
+      let maxW = 0, maxH = 0;
+      images.forEach((img, i) => {
+        if (i >= grid.cols * grid.rows) return;
+        maxW = Math.max(maxW, img.img.naturalWidth);
+        maxH = Math.max(maxH, img.img.naturalHeight);
+      });
+      const ratio = maxW / maxH || 1;
+      if (ratio >= 1) return { w: base, h: Math.round(base / ratio) };
+      return { w: Math.round(base * ratio), h: base };
+    }
+    const ratios = ASPECT_RATIOS;
+    const r = ratios[aspectRatio] || 1;
+    if (r >= 1) return { w: base, h: Math.round(base / r) };
+    return { w: Math.round(base * r), h: base };
+  }
+
+  function computeCells(canvasW, canvasH) {
+    const n = images.length;
+    if (n === 0) return [];
+    const layout = getActiveLayout();
+    const gridDef = layout.grid(n);
+    const cols = gridDef.cols, rows = gridDef.rows;
+    const cellDefs = layout.cells(n).slice(0, n);
+
+    const totalSpacingX = spacing * (cols + 1);
+    const totalSpacingY = spacing * (rows + 1);
+    const availW = canvasW - totalSpacingX;
+    const availH = canvasH - totalSpacingY;
+
+    const colUnit = availW / cols;
+    const rowUnit = availH / rows;
+
+    return cellDefs.map((def, i) => ({
+      x: spacing + def.col * (colUnit + spacing),
+      y: spacing + def.row * (rowUnit + spacing),
+      w: def.colSpan * colUnit + (def.colSpan - 1) * spacing,
+      h: def.rowSpan * rowUnit + (def.rowSpan - 1) * spacing,
+      index: i
+    }));
+  }
+
+  function drawRoundedRect(c, x, y, w, h, r) {
+    r = Math.min(r, w / 2, h / 2);
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
+
+  function drawImageInCell(c, img, cell, imageData, isSelected) {
+    const { zoom, offsetX, offsetY } = imageData;
+    const fitMode = imageData.fitMode || 'fill';
+    const scale = zoom / 100;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+
+    c.save();
+    drawRoundedRect(c, cell.x, cell.y, cell.w, cell.h, cornerRadius);
+    c.clip();
+
+    if (borderWidth > 0) {
+      c.fillStyle = borderColor;
+      c.fillRect(cell.x, cell.y, cell.w, cell.h);
+    }
+
+    const inset = borderWidth;
+    const innerX = cell.x + inset, innerY = cell.y + inset;
+    const innerW = cell.w - inset * 2, innerH = cell.h - inset * 2;
+
+    c.save();
+    drawRoundedRect(c, innerX, innerY, innerW, innerH, Math.max(0, cornerRadius - inset));
+    c.clip();
+
+    if (fitMode === 'fit' && bgColor !== 'transparent') {
+      c.fillStyle = bgColor;
+      c.fillRect(innerX, innerY, innerW, innerH);
+    }
+
+    const baseScale = fitMode === 'fit'
+      ? Math.min(innerW / iw, innerH / ih)
+      : Math.max(innerW / iw, innerH / ih);
+    const finalW = iw * baseScale * scale;
+    const finalH = ih * baseScale * scale;
+    let fx = innerX + innerW / 2 + offsetX - finalW / 2;
+    let fy = innerY + innerH / 2 + offsetY - finalH / 2;
+
+    if (finalW > innerW) {
+      const maxOx = (finalW - innerW) / 2;
+      const ox = fx - (innerX + innerW / 2 - finalW / 2);
+      fx = innerX + innerW / 2 - finalW / 2 + Math.max(-maxOx, Math.min(maxOx, ox));
+    } else {
+      fx = innerX + (innerW - finalW) / 2 + offsetX;
+      fx = Math.max(innerX, Math.min(innerX + innerW - finalW, fx));
+    }
+    if (finalH > innerH) {
+      const maxOy = (finalH - innerH) / 2;
+      const oy = fy - (innerY + innerH / 2 - finalH / 2);
+      fy = innerY + innerH / 2 - finalH / 2 + Math.max(-maxOy, Math.min(maxOy, oy));
+    } else {
+      fy = innerY + (innerH - finalH) / 2 + offsetY;
+      fy = Math.max(innerY, Math.min(innerY + innerH - finalH, fy));
+    }
+
+    c.drawImage(img, fx, fy, finalW, finalH);
+    c.restore();
+
+    if (isSelected) {
+      c.strokeStyle = '#2d9f6f';
+      c.lineWidth = 2;
+      drawRoundedRect(c, cell.x + 1, cell.y + 1, cell.w - 2, cell.h - 2, cornerRadius);
+      c.stroke();
+    }
+    c.restore();
+  }
+
+  function getTextPlacement(w, h, position, inset, scale) {
+    const pad = inset * scale;
+    const map = {
+      tl: { x: pad, y: pad, align: 'left', baseline: 'top' },
+      tc: { x: w / 2, y: pad, align: 'center', baseline: 'top' },
+      tr: { x: w - pad, y: pad, align: 'right', baseline: 'top' },
+      ml: { x: pad, y: h / 2, align: 'left', baseline: 'middle' },
+      mc: { x: w / 2, y: h / 2, align: 'center', baseline: 'middle' },
+      mr: { x: w - pad, y: h / 2, align: 'right', baseline: 'middle' },
+      bl: { x: pad, y: h - pad, align: 'left', baseline: 'bottom' },
+      bc: { x: w / 2, y: h - pad, align: 'center', baseline: 'bottom' },
+      br: { x: w - pad, y: h - pad, align: 'right', baseline: 'bottom' }
+    };
+    return map[position] || map.mc;
+  }
+
+  function drawTextLayer(targetCtx, w, h) {
+    if (!textLayer || !textLayer.text) return;
+    const scale = w / getCanvasDimensions().w;
+    const family = FONT_FAMILIES[textLayer.fontKey] || FONT_FAMILIES.modern;
+    const weight = textLayer.fontWeight === 'bold' ? 'bold' : 'normal';
+    const pos = getTextPlacement(w, h, textLayer.position, textLayer.inset, scale);
+    const pad = (textLayer.inset ?? 20) * scale;
+    const maxW = Math.max(20, w - pad * 2);
+    const maxH = Math.max(20, h - pad * 2);
+    let fontSize = Math.min(textLayer.fontSize * scale, maxH);
+
+    targetCtx.save();
+    targetCtx.font = `${weight} ${fontSize}px ${family}`;
+    while (fontSize > 8 && targetCtx.measureText(textLayer.text).width > maxW) {
+      fontSize -= 1;
+      targetCtx.font = `${weight} ${fontSize}px ${family}`;
+    }
+    targetCtx.fillStyle = textLayer.color;
+    targetCtx.textAlign = pos.align;
+    targetCtx.textBaseline = pos.baseline;
+    targetCtx.fillText(textLayer.text, pos.x, pos.y);
+    targetCtx.restore();
+  }
+
+  function buildTextureTile(type) {
+    const tile = document.createElement('canvas');
+    const tc = tile.getContext('2d');
+    if (type === 'soft-grid') {
+      const size = 24;
+      tile.width = size; tile.height = size;
+      tc.strokeStyle = 'rgba(0,0,0,0.11)';
+      tc.lineWidth = 1;
+      tc.beginPath();
+      tc.moveTo(0, size - 0.5); tc.lineTo(size, size - 0.5);
+      tc.moveTo(size - 0.5, 0); tc.lineTo(size - 0.5, size);
+      tc.stroke();
+    } else if (type === 'dots') {
+      const size = 16;
+      tile.width = size; tile.height = size;
+      tc.fillStyle = 'rgba(0,0,0,0.15)';
+      tc.beginPath();
+      tc.arc(size / 2, size / 2, 1.2, 0, Math.PI * 2);
+      tc.fill();
+    } else if (type === 'diagonal') {
+      const size = 12;
+      tile.width = size; tile.height = size;
+      tc.strokeStyle = 'rgba(0,0,0,0.12)';
+      tc.lineWidth = 1;
+      tc.beginPath();
+      tc.moveTo(0, size); tc.lineTo(size, 0);
+      tc.stroke();
+    } else if (type === 'paper') {
+      const size = 64;
+      tile.width = size; tile.height = size;
+      for (let i = 0; i < 80; i++) {
+        const x = (i * 17 + 7) % size;
+        const y = (i * 23 + 11) % size;
+        tc.fillStyle = `rgba(0,0,0,${0.03 + (i % 5) * 0.012})`;
+        tc.fillRect(x, y, 1, 1);
+      }
+    } else if (type === 'checkerboard') {
+      const size = 16;
+      tile.width = size; tile.height = size;
+      tc.fillStyle = '#e8e8e8';
+      tc.fillRect(0, 0, size, size);
+      tc.fillStyle = '#f5f5f5';
+      tc.fillRect(0, 0, size / 2, size / 2);
+      tc.fillRect(size / 2, size / 2, size / 2, size / 2);
+    }
+    return tile;
+  }
+
+  function textureEffectiveAlpha(opacity) {
+    const t = opacity / 100;
+    return Math.min(1, t * (0.5 + t * 0.65));
+  }
+
+  function drawTextureOverlay(targetCtx, w, h, type, opacity) {
+    if (!type || type === 'none' || bgColor === 'transparent') return;
+    const tile = buildTextureTile(type);
+    const pattern = targetCtx.createPattern(tile, 'repeat');
+    if (!pattern) return;
+    targetCtx.save();
+    targetCtx.globalAlpha = textureEffectiveAlpha(opacity);
+    targetCtx.fillStyle = pattern;
+    targetCtx.fillRect(0, 0, w, h);
+    targetCtx.restore();
+  }
+
+  function drawBackgroundImageLayer(targetCtx, w, h) {
+    if (!bgImage || !bgImage.img || bgColor === 'transparent') return;
+    const { img, fitMode, opacity, blur } = bgImage;
+    const iw = img.naturalWidth, ih = img.naturalHeight;
+    if (!iw || !ih) return;
+    const scale = w / getCanvasDimensions().w;
+    targetCtx.save();
+    targetCtx.globalAlpha = opacity / 100;
+    if (blur > 0) targetCtx.filter = `blur(${blur * scale}px)`;
+    const mode = fitMode || 'fill';
+    const baseScale = mode === 'fit' ? Math.min(w / iw, h / ih) : Math.max(w / iw, h / ih);
+    const dw = iw * baseScale, dh = ih * baseScale;
+    const dx = (w - dw) / 2, dy = (h - dh) / 2;
+    targetCtx.drawImage(img, dx, dy, dw, dh);
+    targetCtx.restore();
+  }
+
+  function drawCanvasBackground(targetCtx, w, h, forceBg) {
+    if (forceBg) {
+      targetCtx.fillStyle = forceBg;
+      targetCtx.fillRect(0, 0, w, h);
+      return;
+    }
+    if (bgColor === 'transparent') {
+      targetCtx.clearRect(0, 0, w, h);
+      return;
+    }
+    targetCtx.fillStyle = bgColor;
+    targetCtx.fillRect(0, 0, w, h);
+    if (bgMode === 'image' && bgImage) drawBackgroundImageLayer(targetCtx, w, h);
+    if (bgMode === 'texture' && bgTexture !== 'none') {
+      drawTextureOverlay(targetCtx, w, h, bgTexture, bgTextureOpacity);
+    }
+  }
+
+  function renderToCanvas(targetCtx, w, h, options) {
+    const showSelection = options && options.showSelection;
+    const forceBg = options && options.forceBg;
+
+    drawCanvasBackground(targetCtx, w, h, forceBg);
+
+    const cells = computeCells(w, h);
+    cells.forEach((cell, i) => {
+      if (i < images.length) {
+        const isSelected = showSelection && images[i].id === selectedId;
+        drawImageInCell(targetCtx, images[i].img, cell, images[i], isSelected);
+      }
+    });
+
+    drawTextLayer(targetCtx, w, h);
+  }
+
+  function render() {
+    const n = images.length;
+    const canRender = n >= MIN_IMAGES;
+
+    btnDownloadPng.disabled = !canRender;
+    btnDownloadJpg.disabled = !canRender;
+    minImagesNotice.classList.toggle('show', n > 0 && n < MIN_IMAGES);
+
+    canvasContainer.classList.toggle('is-empty', !canRender);
+    if (!canRender) {
+      canvasContainer.setAttribute('role', 'button');
+      canvasContainer.setAttribute('tabindex', '0');
+      canvasContainer.setAttribute('aria-label', 'Upload images to create your combined image');
+    } else {
+      canvasContainer.removeAttribute('role');
+      canvasContainer.removeAttribute('tabindex');
+      canvasContainer.removeAttribute('aria-label');
+    }
+
+    if (!canRender) {
+      canvasPlaceholder.style.display = '';
+      previewCanvas.style.display = 'none';
+      return;
+    }
+
+    canvasPlaceholder.style.display = 'none';
+    previewCanvas.style.display = '';
+
+    const dims = getCanvasDimensions();
+    previewCanvas.width = dims.w;
+    previewCanvas.height = dims.h;
+    renderToCanvas(ctx, dims.w, dims.h, { showSelection: true });
+  }
+
+  function showToast(msg, isError) {
+    toast.textContent = msg;
+    toast.classList.toggle('error', !!isError);
+    toast.classList.add('show');
+    setTimeout(() => toast.classList.remove('show'), 3000);
+  }
+
+  function loadImageFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!ACCEPTED_TYPES.includes(file.type)) {
+        reject(new Error('unsupported'));
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => resolve({ src: reader.result, img });
+        img.onerror = () => reject(new Error('load'));
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('read'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addFiles(fileList) {
+    const files = Array.from(fileList);
+    const remaining = MAX_IMAGES - images.length;
+    if (remaining <= 0) {
+      showToast('You can upload up to 9 images. Remove one to add more.', true);
+      return;
+    }
+    const toAdd = files.slice(0, remaining);
+    if (files.length > remaining) {
+      showToast(`Only ${remaining} more image${remaining > 1 ? 's' : ''} can be added (max 9).`, true);
+    }
+
+    for (const file of toAdd) {
+      try {
+        const { src, img } = await loadImageFile(file);
+        images.push({ id: nextId++, src, img, zoom: 100, offsetX: 0, offsetY: 0, fitMode: 'fill' });
+      } catch (e) {
+        if (e.message === 'unsupported') {
+          showToast(`"${file.name}" is not supported. Use JPG, PNG, or WebP.`, true);
+        } else {
+          showToast(`Could not load "${file.name}".`, true);
+        }
+      }
+    }
+    updateUI();
+  }
+
+  function removeImage(id) {
+    images = images.filter(img => img.id !== id);
+    if (selectedId === id) {
+      selectedId = null;
+      showCanvasSettings();
+    }
+    updateUI();
+  }
+
+  function updateUI() {
+    const n = images.length;
+    const hasImages = n > 0;
+
+    panelLeft.classList.toggle('is-empty', !hasImages);
+    uploadZone.classList.toggle('hidden', hasImages);
+    imagesBlock.classList.toggle('hidden', !hasImages);
+    reorderHint.style.display = n > 1 ? '' : 'none';
+    layoutSection.style.display = hasImages ? '' : 'none';
+    minImagesNotice.classList.toggle('show', n > 0 && n < MIN_IMAGES);
+
+    syncLayoutForImageCount();
+    renderThumbnails();
+    renderLayoutButtons();
+    render();
+    updateSettingsPanel();
+  }
+
+  function renderThumbnails() {
+    thumbList.innerHTML = '';
+    images.forEach((img, i) => {
+      const el = document.createElement('div');
+      el.className = 'thumb-item' + (img.id === selectedId ? ' selected' : '');
+      el.draggable = true;
+      el.dataset.id = img.id;
+      el.innerHTML = `
+        <span class="thumb-drag" aria-hidden="true">⠿</span>
+        <img class="thumb-preview" src="${img.src}" alt="Image ${i + 1}">
+        <span class="thumb-num">${i + 1}</span>
+        <button class="thumb-remove" type="button" aria-label="Remove image ${i + 1}">✕</button>
+      `;
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.thumb-remove')) return;
+        selectImage(img.id);
+      });
+      el.querySelector('.thumb-remove').addEventListener('click', (e) => {
+        e.stopPropagation();
+        removeImage(img.id);
+      });
+      // Drag reorder
+      el.addEventListener('dragstart', (e) => {
+        dragThumbIndex = i;
+        el.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      el.addEventListener('dragend', () => {
+        dragThumbIndex = null;
+        el.classList.remove('dragging');
+        document.querySelectorAll('.thumb-item').forEach(t => t.classList.remove('drag-over'));
+      });
+      el.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        el.classList.add('drag-over');
+      });
+      el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+      el.addEventListener('drop', (e) => {
+        e.preventDefault();
+        el.classList.remove('drag-over');
+        const toIndex = i;
+        if (dragThumbIndex !== null && dragThumbIndex !== toIndex) {
+          const moved = images.splice(dragThumbIndex, 1)[0];
+          images.splice(toIndex, 0, moved);
+          updateUI();
+        }
+      });
+      thumbList.appendChild(el);
+    });
+  }
+
+  function layoutMiniClass(key, count) {
+    const map = {
+      'side-by-side': 'h2',
+      'stacked': 'v2',
+      'featured-split': 'f-split',
+      'featured-left': count === 3 ? 'l1s2' : count === 4 ? 'l1s3' : count === 5 ? 'l1g4' : count === 6 ? 'l1s6' : 'l1s2',
+      'featured-top': count === 3 ? 'f-top3' : count === 4 ? 'f-top4' : count === 5 ? 'f-top5' : count === 6 ? 'f-top6' : 'f-top3',
+      'three-columns': 'v3',
+      'three-rows': 'h3',
+      'classic-grid': 'grid4',
+      'featured-right': 'l1s3r',
+      'four-columns': 'v4',
+      'four-rows': 'h4',
+      'balanced-grid': count === 5 ? 'bal5' : count === 6 ? 'grid32' : 'grid33'
+    };
+    return map[key] || 'grid4';
+  }
+
+  function layoutMiniSpans(key, count) {
+    const map = {
+      'side-by-side': 2,
+      'stacked': 2,
+      'featured-split': 2,
+      'featured-left': count === 3 ? 3 : count === 4 ? 4 : count === 5 ? 5 : 6,
+      'featured-top': count === 3 ? 3 : count === 4 ? 4 : count === 5 ? 5 : 6,
+      'three-columns': 3,
+      'three-rows': 3,
+      'classic-grid': 4,
+      'featured-right': 4,
+      'four-columns': 4,
+      'four-rows': 4,
+      'balanced-grid': count === 5 ? 5 : count === 6 ? 6 : count
+    };
+    return map[key] || 4;
+  }
+
+  function renderLayoutButtons() {
+    const n = images.length;
+    layoutGroups.innerHTML = '';
+    if (n === 0) return;
+
+    const heading = document.createElement('div');
+    heading.className = 'layout-group-title';
+    heading.textContent = 'Layouts for ' + n + ' Image' + (n !== 1 ? 's' : '');
+    layoutGroups.appendChild(heading);
+
+    const smartKey = getSmartDefaultKey(n);
+    const smartName = LAYOUTS[smartKey].name;
+    const status = document.createElement('div');
+    status.className = 'layout-smart-status';
+    status.textContent = layoutMode === smartKey
+      ? 'Smart layout applied'
+      : 'Smart layout: ' + smartName;
+    layoutGroups.appendChild(status);
+
+    const grid = document.createElement('div');
+    grid.className = 'layout-grid';
+
+    getSelectableLayouts(n).forEach(key => {
+      grid.appendChild(createLayoutBtn(key, n));
+    });
+    layoutGroups.appendChild(grid);
+  }
+
+  function createLayoutBtn(key, count) {
+    const layout = LAYOUTS[key];
+    const isActive = layoutMode === key;
+    const btn = document.createElement('button');
+    btn.className = 'layout-btn' + (isActive ? ' active' : '');
+    btn.type = 'button';
+    btn.setAttribute('aria-label', layout.name);
+    const miniClass = layoutMiniClass(key, count);
+    const spanCount = layoutMiniSpans(key, count);
+    let spans = '';
+    for (let i = 0; i < spanCount; i++) spans += '<span></span>';
+    btn.innerHTML = `<div class="mini ${miniClass}">${spans}</div><span class="layout-label">${layout.name}</span>`;
+    btn.addEventListener('click', () => {
+      layoutMode = key;
+      renderLayoutButtons();
+      render();
+    });
+    return btn;
+  }
+
+  function selectImage(id) {
+    selectedId = id;
+    showImageSettings();
+    renderThumbnails();
+    render();
+  }
+
+  function showCanvasSettings() {
+    tabCanvas.classList.add('active');
+    tabImage.classList.remove('active');
+    tabImage.disabled = !selectedId;
+    canvasSettings.style.display = '';
+    imageSettings.style.display = 'none';
+  }
+
+  function updateImageSettingsUI() {
+    const img = images.find(i => i.id === selectedId);
+    if (!img) return;
+    const idx = images.indexOf(img);
+    imageSettingsLabel.textContent = 'Editing Image ' + (idx + 1);
+    document.getElementById('zoom').value = img.zoom;
+    document.getElementById('zoomVal').textContent = img.zoom + '%';
+    document.querySelectorAll('#fitModeGroup .btn-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.fit === (img.fitMode || 'fill'));
+    });
+  }
+
+  function showImageSettings() {
+    if (!selectedId) return;
+    tabCanvas.classList.remove('active');
+    tabImage.classList.add('active');
+    tabImage.disabled = false;
+    canvasSettings.style.display = 'none';
+    imageSettings.style.display = '';
+    updateImageSettingsUI();
+  }
+
+  function updateSettingsPanel() {
+    if (selectedId && tabImage.classList.contains('active')) showImageSettings();
+    else showCanvasSettings();
+  }
+
+  // Canvas click / drag
+  function getCellAtPoint(px, py) {
+    const dims = getCanvasDimensions();
+    const rect = previewCanvas.getBoundingClientRect();
+    const scaleX = dims.w / rect.width;
+    const scaleY = dims.h / rect.height;
+    const x = (px - rect.left) * scaleX;
+    const y = (py - rect.top) * scaleY;
+    const cells = computeCells(dims.w, dims.h);
+    for (let i = cells.length - 1; i >= 0; i--) {
+      const c = cells[i];
+      if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return { cell: c, index: i, x, y };
+    }
+    return null;
+  }
+
+  previewCanvas.addEventListener('mousedown', (e) => {
+    if (images.length < MIN_IMAGES) return;
+    const hit = getCellAtPoint(e.clientX, e.clientY);
+    if (hit && hit.index < images.length) {
+      selectImage(images[hit.index].id);
+      canvasDrag = { id: images[hit.index].id, startX: e.clientX, startY: e.clientY, origOx: images[hit.index].offsetX, origOy: images[hit.index].offsetY };
+    } else {
+      selectedId = null;
+      showCanvasSettings();
+      renderThumbnails();
+      render();
+    }
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!canvasDrag) return;
+    const img = images.find(i => i.id === canvasDrag.id);
+    if (!img) return;
+    const rect = previewCanvas.getBoundingClientRect();
+    const dims = getCanvasDimensions();
+    const scaleX = dims.w / rect.width;
+    const scaleY = dims.h / rect.height;
+    img.offsetX = canvasDrag.origOx + (e.clientX - canvasDrag.startX) * scaleX;
+    img.offsetY = canvasDrag.origOy + (e.clientY - canvasDrag.startY) * scaleY;
+    render();
+  });
+
+  window.addEventListener('mouseup', () => { canvasDrag = null; });
+
+  // Touch support
+  previewCanvas.addEventListener('touchstart', (e) => {
+    if (images.length < MIN_IMAGES) return;
+    const touch = e.touches[0];
+    const hit = getCellAtPoint(touch.clientX, touch.clientY);
+    if (hit && hit.index < images.length) {
+      selectImage(images[hit.index].id);
+      canvasDrag = { id: images[hit.index].id, startX: touch.clientX, startY: touch.clientY, origOx: images[hit.index].offsetX, origOy: images[hit.index].offsetY };
+    }
+  }, { passive: true });
+
+  window.addEventListener('touchmove', (e) => {
+    if (!canvasDrag) return;
+    const touch = e.touches[0];
+    const img = images.find(i => i.id === canvasDrag.id);
+    if (!img) return;
+    const rect = previewCanvas.getBoundingClientRect();
+    const dims = getCanvasDimensions();
+    const scaleX = dims.w / rect.width;
+    const scaleY = dims.h / rect.height;
+    img.offsetX = canvasDrag.origOx + (touch.clientX - canvasDrag.startX) * scaleX;
+    img.offsetY = canvasDrag.origOy + (touch.clientY - canvasDrag.startY) * scaleY;
+    render();
+  }, { passive: true });
+
+  window.addEventListener('touchend', () => { canvasDrag = null; });
+
+  // Upload handlers
+  function openFilePicker() {
+    fileInput.click();
+  }
+
+  function bindDropZone(el) {
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      el.classList.add('dragover');
+    });
+    el.addEventListener('dragleave', (e) => {
+      if (!el.contains(e.relatedTarget)) el.classList.remove('dragover');
+    });
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('dragover');
+      if (e.dataTransfer.files.length) addFiles(e.dataTransfer.files);
+    });
+  }
+
+  uploadZone.addEventListener('click', openFilePicker);
+  uploadZone.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFilePicker(); }
+  });
+  bindDropZone(uploadZone);
+
+  btnAddImages.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFilePicker();
+  });
+
+  const btnCanvasUpload = document.getElementById('btnCanvasUpload');
+  btnCanvasUpload.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openFilePicker();
+  });
+
+  canvasContainer.addEventListener('click', (e) => {
+    if (images.length >= MIN_IMAGES) return;
+    openFilePicker();
+  });
+  canvasContainer.addEventListener('keydown', (e) => {
+    if (images.length >= MIN_IMAGES) return;
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFilePicker(); }
+  });
+  bindDropZone(canvasContainer);
+
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) addFiles(fileInput.files);
+    fileInput.value = '';
+  });
+
+  // Settings handlers
+  const MORE_RATIOS = ['16:9', '4:3', '3:4', '3:2', '2:3'];
+
+  function setAspectRatioActive(ratio) {
+    aspectRatio = ratio;
+    document.querySelectorAll('#aspectRatioGroup .btn-pill, #aspectRatioMore .btn-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.ratio === ratio);
+    });
+    const moreEl = document.getElementById('moreRatios');
+    if (MORE_RATIOS.includes(ratio)) moreEl.open = true;
+    render();
+  }
+
+  document.getElementById('aspectRatioGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-ratio]');
+    if (!btn) return;
+    setAspectRatioActive(btn.dataset.ratio);
+  });
+
+  document.getElementById('aspectRatioMore').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-ratio]');
+    if (!btn) return;
+    setAspectRatioActive(btn.dataset.ratio);
+  });
+
+  document.getElementById('spacing').addEventListener('input', (e) => {
+    spacing = +e.target.value;
+    document.getElementById('spacingVal').textContent = spacing + ' px';
+    render();
+  });
+
+  document.getElementById('borderWidth').addEventListener('input', (e) => {
+    borderWidth = +e.target.value;
+    document.getElementById('borderWidthVal').textContent = borderWidth + ' px';
+    render();
+  });
+
+  document.getElementById('cornerRadius').addEventListener('input', (e) => {
+    cornerRadius = +e.target.value;
+    document.getElementById('cornerRadiusVal').textContent = cornerRadius + ' px';
+    render();
+  });
+
+  function normalizeHex(val) {
+    if (!val) return '';
+    let v = val.trim();
+    if (!v.startsWith('#')) v = '#' + v;
+    return v.toUpperCase();
+  }
+
+  function isValidHex(val) {
+    return /^#[0-9A-Fa-f]{6}$/.test(val);
+  }
+
+  function hexForPicker(color) {
+    if (color === 'transparent' || !isValidHex(color)) return '#ffffff';
+    return color.toLowerCase();
+  }
+
+  function syncColorPreview(previewEl, color) {
+    if (!previewEl) return;
+    if (color === 'transparent') {
+      previewEl.style.background = 'repeating-conic-gradient(#ccc 0% 25%, #fff 0% 50%) 50% / 10px 10px';
+    } else {
+      previewEl.style.background = color;
+    }
+  }
+
+  function initColorControl(opts) {
+    const { presetsId, panelId, pickerId, hexId, previewId, eyedropperId, getVal, setVal, onApply } = opts;
+    const presets = document.getElementById(presetsId);
+    const panel = document.getElementById(panelId);
+    const picker = document.getElementById(pickerId);
+    const hex = document.getElementById(hexId);
+    const preview = previewId ? document.getElementById(previewId) : null;
+    const eyedropper = eyedropperId ? document.getElementById(eyedropperId) : null;
+
+    function syncUI(color) {
+      if (color && color !== 'transparent') {
+        picker.value = hexForPicker(color);
+        hex.value = normalizeHex(color);
+        syncColorPreview(preview, color);
+      } else if (color === 'transparent') {
+        syncColorPreview(preview, 'transparent');
+      }
+    }
+
+    function applyColor(color) {
+      setVal(color);
+      syncUI(color);
+      if (onApply) onApply(color);
+      render();
+    }
+
+    const customWrap = panel.closest('.color-field-custom');
+
+    function showCustomPanel(show) {
+      panel.classList.toggle('hidden', !show);
+      if (customWrap) customWrap.classList.toggle('hidden', !show);
+    }
+
+    presets.addEventListener('click', (e) => {
+      const swatch = e.target.closest('.color-swatch');
+      if (!swatch) return;
+      presets.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      swatch.classList.add('active');
+      if (swatch.dataset.custom) {
+        showCustomPanel(true);
+        syncUI(getVal());
+        return;
+      }
+      showCustomPanel(false);
+      applyColor(swatch.dataset.color);
+    });
+
+    if (preview) {
+      preview.addEventListener('click', () => picker.click());
+    }
+
+    picker.addEventListener('input', () => {
+      const color = picker.value;
+      hex.value = color.toUpperCase();
+      applyColor(color);
+    });
+
+    hex.addEventListener('input', () => {
+      const v = normalizeHex(hex.value);
+      if (isValidHex(v)) {
+        picker.value = v.toLowerCase();
+        applyColor(v.toLowerCase());
+      }
+    });
+
+    if (eyedropper) {
+      if (EYEDROPPER_SUPPORTED) {
+        eyedropper.addEventListener('click', async () => {
+          try {
+            eyedropper.classList.add('is-active');
+            const dropper = new EyeDropper();
+            const result = await dropper.open();
+            panel.classList.remove('hidden');
+            if (customWrap) customWrap.classList.remove('hidden');
+            presets.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+            const customSwatch = presets.querySelector('[data-custom]');
+            if (customSwatch) customSwatch.classList.add('active');
+            applyColor(result.sRGBHex.toLowerCase());
+          } catch (err) { /* user cancelled */ }
+          finally {
+            eyedropper.classList.remove('is-active');
+          }
+        });
+      } else {
+        eyedropper.classList.add('hidden');
+      }
+    }
+  }
+
+  initColorControl({
+    presetsId: 'borderColorPresets', panelId: 'borderColorCustomPanel',
+    pickerId: 'borderColorPicker', hexId: 'borderColorHex', previewId: 'borderColorPreview',
+    eyedropperId: 'borderColorEyedropper',
+    getVal: () => borderColor, setVal: (c) => { borderColor = c; }
+  });
+  initColorControl({
+    presetsId: 'bgColorPresets', panelId: 'bgColorCustomPanel',
+    pickerId: 'bgColorPicker', hexId: 'bgColorHex', previewId: 'bgColorPreview',
+    eyedropperId: 'bgColorEyedropper',
+    getVal: () => bgColor, setVal: (c) => { bgColor = c; },
+    onApply: () => updateBgTabsState()
+  });
+  initColorControl({
+    presetsId: 'textColorPresets', panelId: 'textColorCustomPanel',
+    pickerId: 'textColorPicker', hexId: 'textColorHex', previewId: 'textColorPreview',
+    eyedropperId: 'textColorEyedropper',
+    getVal: () => textLayer ? textLayer.color : '#000000',
+    setVal: (c) => { if (textLayer) textLayer.color = c; }
+  });
+
+  function updateBgTabsState() {
+    const isTransparent = bgColor === 'transparent';
+    document.querySelectorAll('#bgTabs .bg-tab').forEach(tab => {
+      const tabName = tab.dataset.bgTab;
+      if (tabName === 'color') { tab.disabled = false; return; }
+      tab.disabled = isTransparent;
+      if (isTransparent) tab.title = 'Not available with a transparent background';
+      else tab.removeAttribute('title');
+    });
+    if (isTransparent) {
+      if (bgMode !== 'color') {
+        bgMode = 'color';
+        showBgTab('color');
+      }
+    }
+  }
+
+  function updateTextureIntensityUI() {
+    const block = document.getElementById('textureIntensityBlock');
+    const show = bgMode === 'texture' && bgTexture !== 'none';
+    block.classList.toggle('hidden', !show);
+    document.getElementById('bgTextureOpacityVal').textContent = bgTextureOpacity + '%';
+    document.getElementById('bgTextureOpacity').value = bgTextureOpacity;
+  }
+
+  function syncTextureCards() {
+    document.querySelectorAll('#bgTextureGroup .texture-card').forEach(card => {
+      const active = card.dataset.texture === bgTexture;
+      card.classList.toggle('active', active);
+      card.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+  }
+
+  function selectTexture(texture) {
+    const prev = bgTexture;
+    bgTexture = texture;
+    if (texture !== 'none' && prev === 'none') {
+      bgTextureOpacity = 40;
+      document.getElementById('bgTextureOpacity').value = 40;
+      document.getElementById('bgTextureOpacityVal').textContent = '40%';
+    }
+    syncTextureCards();
+    updateTextureIntensityUI();
+    render();
+  }
+
+  function updateBgImageUI() {
+    const hasBg = !!bgImage;
+    document.getElementById('bgUploadCard').classList.toggle('hidden', hasBg);
+    document.getElementById('bgImageCard').classList.toggle('hidden', !hasBg);
+    if (hasBg) {
+      document.getElementById('bgImageThumb').src = bgImage.src;
+      document.getElementById('bgImageOpacityVal').textContent = bgImage.opacity + '%';
+      document.getElementById('bgImageOpacity').value = bgImage.opacity;
+      document.getElementById('bgImageBlurVal').textContent = bgImage.blur + ' px';
+      document.getElementById('bgImageBlur').value = bgImage.blur;
+      document.querySelectorAll('#bgImageFitGroup .btn-pill').forEach(b => {
+        b.classList.toggle('active', b.dataset.bgFit === (bgImage.fitMode || 'fill'));
+      });
+    }
+  }
+
+  function showBgTab(tabName) {
+    bgMode = tabName;
+    document.querySelectorAll('#bgTabs .bg-tab').forEach(t => {
+      const active = t.dataset.bgTab === tabName;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+    document.getElementById('bgTabColor').classList.toggle('hidden', tabName !== 'color');
+    document.getElementById('bgTabTexture').classList.toggle('hidden', tabName !== 'texture');
+    document.getElementById('bgTabImage').classList.toggle('hidden', tabName !== 'image');
+    updateTextureIntensityUI();
+  }
+
+  document.getElementById('bgTabs').addEventListener('click', (e) => {
+    const tab = e.target.closest('[data-bg-tab]');
+    if (!tab || tab.disabled) return;
+    showBgTab(tab.dataset.bgTab);
+    render();
+  });
+
+  document.getElementById('bgTextureGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-texture]');
+    if (!btn) return;
+    selectTexture(btn.dataset.texture);
+  });
+
+  document.getElementById('bgTextureOpacity').addEventListener('input', (e) => {
+    bgTextureOpacity = +e.target.value;
+    document.getElementById('bgTextureOpacityVal').textContent = bgTextureOpacity + '%';
+    render();
+  });
+
+  function openBgImagePicker() {
+    document.getElementById('bgImageInput').click();
+  }
+
+  document.getElementById('bgUploadCard').addEventListener('click', openBgImagePicker);
+  document.getElementById('bgUploadCard').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openBgImagePicker(); }
+  });
+  document.getElementById('btnReplaceBgImage').addEventListener('click', openBgImagePicker);
+
+  document.getElementById('bgImageInput').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const { src, img } = await loadImageFile(file);
+      if (bgImage) {
+        bgImage.src = src;
+        bgImage.img = img;
+      } else {
+        bgImage = { src, img, fitMode: 'fill', opacity: 100, blur: 0 };
+      }
+      showBgTab('image');
+      updateBgTabsState();
+      updateBgImageUI();
+      render();
+    } catch (err) {
+      showToast('Could not load background image.', true);
+    }
+    e.target.value = '';
+  });
+
+  document.getElementById('bgImageFitGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-bg-fit]');
+    if (!btn || !bgImage) return;
+    bgImage.fitMode = btn.dataset.bgFit;
+    document.querySelectorAll('#bgImageFitGroup .btn-pill').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  document.getElementById('bgImageOpacity').addEventListener('input', (e) => {
+    if (!bgImage) return;
+    bgImage.opacity = +e.target.value;
+    document.getElementById('bgImageOpacityVal').textContent = bgImage.opacity + '%';
+    render();
+  });
+
+  document.getElementById('bgImageBlur').addEventListener('input', (e) => {
+    if (!bgImage) return;
+    bgImage.blur = +e.target.value;
+    document.getElementById('bgImageBlurVal').textContent = bgImage.blur + ' px';
+    render();
+  });
+
+  document.getElementById('btnRemoveBgImage').addEventListener('click', () => {
+    bgImage = null;
+    updateBgImageUI();
+    render();
+  });
+
+  // Text
+  const textSection = document.getElementById('textSection');
+  const textControls = document.getElementById('textControls');
+  const textToggleLabel = document.getElementById('textToggleLabel');
+
+  function clampFontSize(size) {
+    return Math.max(12, Math.min(120, size));
+  }
+
+  function setFontSize(size) {
+    if (!textLayer) textLayer = defaultTextLayer();
+    const val = clampFontSize(size);
+    textLayer.fontSize = val;
+    document.getElementById('fontSize').value = val;
+    document.getElementById('fontSizeInput').value = val;
+    render();
+  }
+
+  function syncTextControlsUI() {
+    if (!textLayer) return;
+    document.getElementById('textInput').value = textLayer.text;
+    document.getElementById('textFont').value = textLayer.fontKey || 'modern';
+    document.querySelectorAll('#textStyleGroup .btn-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.weight === (textLayer.fontWeight || 'normal'));
+    });
+    const fs = clampFontSize(textLayer.fontSize);
+    textLayer.fontSize = fs;
+    document.getElementById('fontSize').value = fs;
+    document.getElementById('fontSizeInput').value = fs;
+    document.querySelectorAll('#textPositionGrid .text-pos-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.pos === (textLayer.position || 'mc'));
+    });
+    document.getElementById('textInset').value = textLayer.inset ?? 20;
+    document.getElementById('textInsetVal').textContent = (textLayer.inset ?? 20) + ' px';
+  }
+
+  textSection.addEventListener('toggle', () => {
+    if (textSection.open && !textLayer) {
+      textLayer = defaultTextLayer();
+      textControls.style.display = '';
+      textToggleLabel.textContent = '';
+      syncTextControlsUI();
+    }
+  });
+
+  document.getElementById('textInput').addEventListener('input', (e) => {
+    if (!textLayer) textLayer = defaultTextLayer();
+    textLayer.text = e.target.value;
+    render();
+  });
+
+  document.getElementById('textFont').addEventListener('change', (e) => {
+    if (!textLayer) textLayer = defaultTextLayer();
+    textLayer.fontKey = e.target.value;
+    render();
+  });
+
+  document.getElementById('textStyleGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-weight]');
+    if (!btn || !textLayer) return;
+    textLayer.fontWeight = btn.dataset.weight;
+    document.querySelectorAll('#textStyleGroup .btn-pill').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  document.getElementById('fontSize').addEventListener('input', (e) => {
+    setFontSize(+e.target.value);
+  });
+
+  document.getElementById('fontSizeInput').addEventListener('input', (e) => {
+    const raw = +e.target.value;
+    if (!isNaN(raw) && raw >= 12 && raw <= 120) setFontSize(raw);
+  });
+
+  document.getElementById('fontSizeInput').addEventListener('change', (e) => {
+    const raw = +e.target.value;
+    setFontSize(isNaN(raw) ? 28 : raw);
+  });
+
+  document.getElementById('fontSizePresets').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-size]');
+    if (!btn) return;
+    setFontSize(+btn.dataset.size);
+  });
+
+  document.getElementById('textPositionGrid').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pos]');
+    if (!btn || !textLayer) return;
+    textLayer.position = btn.dataset.pos;
+    document.querySelectorAll('#textPositionGrid .text-pos-btn').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  document.getElementById('textInset').addEventListener('input', (e) => {
+    if (!textLayer) textLayer = defaultTextLayer();
+    textLayer.inset = +e.target.value;
+    document.getElementById('textInsetVal').textContent = e.target.value + ' px';
+    render();
+  });
+
+  document.getElementById('btnRemoveText').addEventListener('click', () => {
+    textLayer = null;
+    textControls.style.display = 'none';
+    textToggleLabel.textContent = '+ Add Text';
+    document.getElementById('textInput').value = '';
+    textSection.open = false;
+    render();
+  });
+
+  // Image settings
+  tabCanvas.addEventListener('click', () => { showCanvasSettings(); render(); });
+  tabImage.addEventListener('click', () => { if (!tabImage.disabled && selectedId) showImageSettings(); });
+
+  document.getElementById('fitModeGroup').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-fit]');
+    if (!btn || !selectedId) return;
+    const img = images.find(i => i.id === selectedId);
+    if (!img) return;
+    img.fitMode = btn.dataset.fit;
+    document.querySelectorAll('#fitModeGroup .btn-pill').forEach(b => b.classList.toggle('active', b === btn));
+    render();
+  });
+
+  document.getElementById('zoom').addEventListener('input', (e) => {
+    const img = images.find(i => i.id === selectedId);
+    if (img) { img.zoom = +e.target.value; document.getElementById('zoomVal').textContent = img.zoom + '%'; render(); }
+  });
+
+  document.getElementById('btnCenterImage').addEventListener('click', () => {
+    const img = images.find(i => i.id === selectedId);
+    if (img) { img.offsetX = 0; img.offsetY = 0; render(); }
+  });
+
+  document.getElementById('btnResetImage').addEventListener('click', () => {
+    const img = images.find(i => i.id === selectedId);
+    if (img) {
+      img.zoom = 100;
+      img.offsetX = 0;
+      img.offsetY = 0;
+      img.fitMode = 'fill';
+      document.getElementById('zoom').value = 100;
+      document.getElementById('zoomVal').textContent = '100%';
+      updateImageSettingsUI();
+      render();
+    }
+  });
+
+  document.getElementById('btnReplaceImage').addEventListener('click', () => document.getElementById('replaceInput').click());
+  document.getElementById('replaceInput').addEventListener('change', async (e) => {
+    if (!e.target.files[0] || !selectedId) return;
+    try {
+      const { src, img } = await loadImageFile(e.target.files[0]);
+      const target = images.find(i => i.id === selectedId);
+      if (target) {
+        target.src = src;
+        target.img = img;
+        target.zoom = 100;
+        target.offsetX = 0;
+        target.offsetY = 0;
+        updateImageSettingsUI();
+        updateUI();
+      }
+    } catch (err) {
+      showToast('Could not replace image.', true);
+    }
+    e.target.value = '';
+  });
+
+  document.getElementById('btnRemoveImage').addEventListener('click', () => {
+    if (selectedId) removeImage(selectedId);
+  });
+
+  // Export
+  function exportImage(format) {
+    if (images.length < MIN_IMAGES) return;
+    try {
+      const dims = getCanvasDimensions();
+      let exportW = dims.w, exportH = dims.h;
+      const maxDim = Math.max(exportW, exportH);
+      if (maxDim > MAX_EXPORT) {
+        const s = MAX_EXPORT / maxDim;
+        exportW = Math.round(exportW * s);
+        exportH = Math.round(exportH * s);
+      }
+
+      const exportCanvas = document.createElement('canvas');
+      exportCanvas.width = exportW;
+      exportCanvas.height = exportH;
+      const ec = exportCanvas.getContext('2d');
+
+      const forceBg = format === 'jpg' && bgColor === 'transparent' ? '#ffffff' : null;
+      renderToCanvas(ec, exportW, exportH, { showSelection: false, forceBg });
+
+      const mime = format === 'png' ? 'image/png' : 'image/jpeg';
+      const quality = format === 'jpg' ? 0.92 : undefined;
+      exportCanvas.toBlob((blob) => {
+        if (!blob) { showToast('Export failed. Try with fewer or smaller images.', true); return; }
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `combined-image.${format}`;
+        a.click();
+        URL.revokeObjectURL(url);
+      }, mime, quality);
+    } catch (err) {
+      showToast('Export failed. Try with fewer or smaller images.', true);
+    }
+  }
+
+  btnDownloadPng.addEventListener('click', () => exportImage('png'));
+  btnDownloadJpg.addEventListener('click', () => exportImage('jpg'));
+
+  // Reset
+  document.getElementById('btnReset').addEventListener('click', () => {
+    if (images.length === 0) return;
+    if (!confirm('Reset all settings and remove all images?')) return;
+    images = [];
+    selectedId = null;
+    layoutMode = 'side-by-side';
+    prevImageCount = 0;
+    aspectRatio = '1:1';
+    spacing = 16;
+    borderWidth = 0;
+    borderColor = '#ffffff';
+    cornerRadius = 16;
+    bgColor = '#ffffff';
+    bgMode = 'color';
+    bgTexture = 'none';
+    bgTextureOpacity = 40;
+    bgImage = null;
+    textLayer = null;
+    document.getElementById('spacing').value = 16;
+    document.getElementById('spacingVal').textContent = '16 px';
+    document.getElementById('borderWidth').value = 0;
+    document.getElementById('borderWidthVal').textContent = '0 px';
+    document.getElementById('cornerRadius').value = 16;
+    document.getElementById('cornerRadiusVal').textContent = '16 px';
+    document.querySelectorAll('#aspectRatioGroup .btn-pill, #aspectRatioMore .btn-pill').forEach(b => {
+      b.classList.toggle('active', b.dataset.ratio === '1:1');
+    });
+    document.getElementById('moreRatios').open = false;
+    document.querySelectorAll('.color-custom-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.color-field-custom').forEach(w => w.classList.add('hidden'));
+    document.querySelectorAll('#borderColorPresets .color-swatch').forEach((s, i) => {
+      s.classList.toggle('active', i === 0);
+    });
+    document.querySelectorAll('#bgColorPresets .color-swatch').forEach((s, i) => {
+      s.classList.toggle('active', i === 0);
+    });
+    document.querySelectorAll('#textColorPresets .color-swatch').forEach((s, i) => {
+      s.classList.toggle('active', i === 0);
+    });
+    document.getElementById('borderColorPicker').value = '#ffffff';
+    document.getElementById('borderColorHex').value = '#FFFFFF';
+    syncColorPreview(document.getElementById('borderColorPreview'), '#ffffff');
+    document.getElementById('bgColorPicker').value = '#ffffff';
+    document.getElementById('bgColorHex').value = '#FFFFFF';
+    syncColorPreview(document.getElementById('bgColorPreview'), '#ffffff');
+    document.getElementById('textColorPicker').value = '#000000';
+    document.getElementById('textColorHex').value = '#000000';
+    syncColorPreview(document.getElementById('textColorPreview'), '#000000');
+    showBgTab('color');
+    updateBgTabsState();
+    syncTextureCards();
+    updateTextureIntensityUI();
+    updateBgImageUI();
+    document.getElementById('bgTextureOpacity').value = 40;
+    document.getElementById('bgTextureOpacityVal').textContent = '40%';
+    document.getElementById('textFont').value = 'modern';
+    document.querySelectorAll('#textStyleGroup .btn-pill').forEach((b, i) => b.classList.toggle('active', i === 0));
+    document.getElementById('fontSize').value = 28;
+    document.getElementById('fontSizeInput').value = 28;
+    document.querySelectorAll('#textPositionGrid .text-pos-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.pos === 'mc');
+    });
+    document.getElementById('textInset').value = 20;
+    document.getElementById('textInsetVal').textContent = '20 px';
+    document.getElementById('textInput').value = '';
+    textControls.style.display = 'none';
+    textToggleLabel.textContent = '+ Add Text';
+    textSection.open = false;
+    updateUI();
+  });
+
+  // AI Coming Soon (optional — removed from page)
+  document.getElementById('btnAiComingSoon')?.addEventListener('click', () => {
+    showToast('AI image blending is coming soon. Try the layout combiner today.');
+  });
+
+  // Init
+  updateBgTabsState();
+  syncTextureCards();
+  updateTextureIntensityUI();
+  updateBgImageUI();
+  updateUI();
+})();
+</script>
+</body>
+</html>
